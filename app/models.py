@@ -17,6 +17,7 @@ class Product(SQLModel, table=True):
     is_prime: bool = False
     meli_item_id: Optional[str] = None  # filled in Module 2
     meli_category: Optional[str] = None  # filled in Module 2
+    last_synced_at: Optional[datetime] = None  # ✅ ADDED for Module 2
     status: str = "pending"  # pending / blocked / published / failed
     block_reason: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -40,10 +41,12 @@ class AuditLog(SQLModel, table=True):
     detail: Optional[str] = None
 
 
-# These tables are created now but only USED in later modules.
-# Defining them now means no migration headaches later.
+# ============================================================
+# MODULE 2 TABLES
+# ============================================================
 
 class MeliToken(SQLModel, table=True):
+    """Mercado Libre OAuth tokens - only one row"""
     id: Optional[int] = Field(default=None, primary_key=True)
     access_token: str
     refresh_token: str
@@ -52,6 +55,7 @@ class MeliToken(SQLModel, table=True):
 
 
 class ExchangeRate(SQLModel, table=True):
+    """Cached USD → COP exchange rate"""
     id: Optional[int] = Field(default=None, primary_key=True)
     base: str = "USD"
     target: str = "COP"
@@ -60,16 +64,18 @@ class ExchangeRate(SQLModel, table=True):
 
 
 class SyncHistory(SQLModel, table=True):
+    """Sync operation log - CORRECTED for Module 2"""
     id: Optional[int] = Field(default=None, primary_key=True)
+    sync_type: str = "daily"  # ✅ ADDED: "daily" or "manual"
     started_at: datetime = Field(default_factory=datetime.utcnow)
-    completed_at: Optional[datetime] = None
-    products_checked: int = 0
+    finished_at: Optional[datetime] = None  # ✅ CHANGED from completed_at
     products_updated: int = 0
-    failures: int = 0
-    status: str = "running"
+    products_failed: int = 0  # ✅ CHANGED from failures
+    notes: str = ""  # ✅ ADDED
 
 
 class Setting(SQLModel, table=True):
+    """System settings (shipping, margins, etc.)"""
     id: Optional[int] = Field(default=None, primary_key=True)
     key: str = Field(index=True, unique=True)
     value: str = ""
