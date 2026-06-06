@@ -1,3 +1,69 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+html, body, #root {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: #0d1117;
+  color: #e8ecf2;
+  min-height: 100vh;
+}
+
+/* App-wide background gradient */
+.bg-app {
+  background:
+    radial-gradient(ellipse at top, #161e2e 0%, #0d1117 50%),
+    #0d1117;
+}
+
+/* Glassmorphism card style used everywhere */
+.card {
+  background: linear-gradient(135deg, rgba(80,160,250,0.05) 0%, rgba(16,21,31,0.6) 100%);
+  border: 1px solid rgba(80,160,250,0.15);
+  backdrop-filter: blur(10px);
+  transition: all 0.3s;
+}
+.card:hover {
+  border-color: rgba(80,160,250,0.4);
+}
+
+/* Animations */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes logoPulse {
+  0%, 100% { box-shadow: 0 0 24px rgba(80,160,250,0.5); }
+  50%      { box-shadow: 0 0 40px rgba(80,160,250,0.9); }
+}
+@keyframes floatA {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(30px); }
+}
+@keyframes floatB {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-30px); }
+}
+
+.fade-up      { animation: fadeUp 0.7s ease-out backwards; }
+.fade-up-1    { animation: fadeUp 0.7s ease-out 0.15s backwards; }
+.fade-up-2    { animation: fadeUp 0.7s ease-out 0.30s backwards; }
+.fade-up-3    { animation: fadeUp 0.7s ease-out 0.45s backwards; }
+.logo-pulse   { animation: logoPulse 3s ease-in-out infinite; }
+.glow-float-a { animation: floatA 7s ease-in-out infinite; }
+.glow-float-b { animation: floatB 9s ease-in-out infinite; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #10151f; }
+::-webkit-scrollbar-thumb { background: #1f3a5f; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #50A0FA; }
+
+/* Input focus ring (matches the blue) */
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: rgba(80,160,250,0.6) !important;
+  box-shadow: 0 0 0 3px rgba(80,160,250,0.12);
+}

@@ -10,9 +10,12 @@ import Settings from "./pages/Settings.jsx";
 function App() {
   return (
     <Routes>
+      {/* Root now goes to login first */}
+      <Route path="/" element={<Navigate to="/login" />} />
       <Route path="/login" element={<Login />} />
+
+      {/* Logged-in area (dashboard etc.) - unchanged */}
       <Route path="/" element={<Layout />}>
-        <Route index element={<Navigate to="/dashboard" />} />
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="products" element={<Products />} />
         <Route path="add" element={<AddProduct />} />

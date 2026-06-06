@@ -1,0 +1,82 @@
+export default {
+    // login (from phase 1)
+    loginTitle: "Iniciar sesión",
+    loginSubtitle: "Accede a tu panel de sincronización",
+    username: "Usuario",
+    password: "Contraseña",
+    login: "Entrar",
+    internalSystem: "Sistema interno",
+  
+    // sidebar (from phase 2)
+    brand: "Meli Sync",
+    dashboard: "Panel",
+    products: "Productos",
+    addProduct: "Agregar Producto",
+    importByAsin: "Importar Amazon",
+    blacklist: "Lista Negra",
+    settings: "Configuración",
+    logout: "Cerrar sesión",
+  
+    // dashboard (from phase 2)
+    dashboardTitle: "Panel de control",
+    dashboardSubtitle: "Resumen de tu sincronización",
+    totalProducts: "Productos totales",
+    published: "Publicados",
+    blocked: "Bloqueados",
+    pending: "Pendientes",
+    distribution: "Distribución de productos",
+    exchangeRate: "Tipo de cambio",
+    updatedToday: "actualizado hoy",
+    loadingDashboard: "Cargando panel...",
+    errorLoading: "No se pudo cargar. ¿Está corriendo el backend?",
+  
+    // products page (new)
+    productsTitle: "Productos",
+    productsSubtitle: "Tu catálogo completo",
+    searchPlaceholder: "Buscar por nombre, ASIN...",
+    filterAll: "Todos",
+    asin: "ASIN",
+    title: "Título",
+    priceUsd: "USD",
+    priceCop: "COP",
+    stock: "Stock",
+    status: "Estado",
+    blockReason: "Razón",
+    noProducts: "No hay productos.",
+    loadingProducts: "Cargando productos...",
+    showing: "Mostrando",
+    of: "de",
+  
+    // add product (new)
+    addProductTitle: "Agregar Producto",
+    addProductSubtitle: "Agrega un producto manualmente al catálogo",
+    description: "Descripción",
+    imageUrl: "URL de la imagen",
+    primeProduct: "Producto Prime",
+    add: "Agregar",
+    saving: "Guardando...",
+    productAdded: "Producto agregado correctamente",
+    required: "Requerido",
+  
+    // blacklist (new)
+    blacklistTitle: "Lista Negra",
+    blacklistSubtitle: "Términos que bloquean productos",
+    newTerm: "Nueva marca o palabra clave",
+    brandType: "Marca",
+    keywordType: "Palabra clave",
+    delete: "Eliminar",
+    termsCount: "términos",
+    loadingBlacklist: "Cargando lista...",
+    addTerm: "Agregar término",
+    noTerms: "No hay términos.",
+  
+    // settings (new)
+    settingsTitle: "Configuración",
+    settingsSubtitle: "Ajustes de precios y sincronización",
+    shippingUsd: "Costo de envío (USD)",
+    marginPct: "Margen de ganancia (%)",
+    syncHours: "Frecuencia de sincronización (horas)",
+    save: "Guardar",
+    saved: "¡Guardado!",
+    loadingSettings: "Cargando configuración...",
+  };
