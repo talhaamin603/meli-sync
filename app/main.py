@@ -1,9 +1,15 @@
 """FastAPI application entry point."""
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import init_db
 from app.routers import manual_products
 from app.routers import meli
+from app.routers import amazon as amazon_router
+
+
 
 app = FastAPI(title="Meli Sync - Module 1 & 2")
 
@@ -28,7 +34,7 @@ app.add_middleware(
 # ============================================================
 app.include_router(manual_products.router)
 app.include_router(meli.router)
-
+app.include_router(amazon_router.router)
 # ============================================================
 # Startup event
 # ============================================================

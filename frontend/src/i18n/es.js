@@ -17,7 +17,7 @@ export default {
     settings: "Configuración",
     logout: "Cerrar sesión",
   
-    // dashboard (from phase 2)
+    // dashboard
     dashboardTitle: "Panel de control",
     dashboardSubtitle: "Resumen de tu sincronización",
     totalProducts: "Productos totales",
@@ -30,7 +30,7 @@ export default {
     loadingDashboard: "Cargando panel...",
     errorLoading: "No se pudo cargar. ¿Está corriendo el backend?",
   
-    // products page (new)
+    // products page
     productsTitle: "Productos",
     productsSubtitle: "Tu catálogo completo",
     searchPlaceholder: "Buscar por nombre, ASIN...",
@@ -39,6 +39,7 @@ export default {
     title: "Título",
     priceUsd: "USD",
     priceCop: "COP",
+    price: "Precio",
     stock: "Stock",
     status: "Estado",
     blockReason: "Razón",
@@ -47,7 +48,7 @@ export default {
     showing: "Mostrando",
     of: "de",
   
-    // add product (new)
+    // add product
     addProductTitle: "Agregar Producto",
     addProductSubtitle: "Agrega un producto manualmente al catálogo",
     description: "Descripción",
@@ -58,7 +59,7 @@ export default {
     productAdded: "Producto agregado correctamente",
     required: "Requerido",
   
-    // blacklist (new)
+    // blacklist
     blacklistTitle: "Lista Negra",
     blacklistSubtitle: "Términos que bloquean productos",
     newTerm: "Nueva marca o palabra clave",
@@ -70,7 +71,7 @@ export default {
     addTerm: "Agregar término",
     noTerms: "No hay términos.",
   
-    // settings (new)
+    // settings
     settingsTitle: "Configuración",
     settingsSubtitle: "Ajustes de precios y sincronización",
     shippingUsd: "Costo de envío (USD)",
@@ -79,4 +80,23 @@ export default {
     save: "Guardar",
     saved: "¡Guardado!",
     loadingSettings: "Cargando configuración...",
+  
+    // amazon import
+    importAsinsTitle: "Importar desde Amazon",
+    importAsinsSubtitle: "Pega uno o varios ASINs (o links de Amazon) para importar",
+    pasteAsins: "ASINs (uno por línea o separados por comas)",
+    asinHelp: "Acepta ASINs sueltos o links completos de Amazon. Cada ASIN debe tener 10 caracteres.",
+    importNow: "Importar",
+    importing: "Importando...",
+    noAsinsEntered: "No has pegado ningún ASIN.",
+    importError: "Error al importar. Revisa la consola.",
+    added: "Agregado",
+    skipped: "Omitido",
+    failed: "Falló",
+    addedShort: "agregados",
+    blockedShort: "bloqueados",
+    skippedShort: "omitidos",
+    failedShort: "fallaron",
+
+
   };

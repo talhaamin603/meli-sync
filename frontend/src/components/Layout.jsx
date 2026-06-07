@@ -66,6 +66,7 @@ function Layout() {
           <NavItem to="/dashboard"  icon="◈" label={t("dashboard")} />
           <NavItem to="/products"   icon="▣" label={t("products")} />
           <NavItem to="/add"        icon="+" label={t("addProduct")} />
+          <NavItem to="/import" icon="↓" label={t("importByAsin")} />
           <NavItem to="/blacklist"  icon="⊘" label={t("blacklist")} />
           <NavItem to="/settings"   icon="⚙" label={t("settings")} />
         </nav>

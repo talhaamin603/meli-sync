@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { getProducts } from "../api.js";
 
-// Status badge with color-coded background
 function StatusBadge({ status, t }) {
   const styles = {
     published: { bg: "rgba(34,197,94,0.15)",  fg: "#22c55e", border: "rgba(34,197,94,0.3)" },
@@ -30,7 +29,7 @@ function Products() {
   const { t } = useTranslation();
   const [all, setAll] = useState([]);
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("all"); // all | pending | published | blocked
+  const [filter, setFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -50,7 +49,6 @@ function Products() {
   if (loading) return <div className="text-[#a0adbb]">{t("loadingProducts")}</div>;
   if (error)   return <div className="text-red-400">{error}</div>;
 
-  // apply search + filter
   const q = search.toLowerCase().trim();
   const filtered = all.filter((p) => {
     if (filter !== "all" && p.status !== filter) return false;
@@ -61,7 +59,6 @@ function Products() {
     );
   });
 
-  // counts per filter for the filter tabs
   const counts = {
     all:       all.length,
     pending:   all.filter((p) => p.status === "pending").length,
@@ -117,7 +114,7 @@ function Products() {
         />
       </div>
 
-      {/* Table */}
+      {/* Table - now with combined Price column */}
       <div className="card rounded-xl overflow-hidden"
            style={{ animation: "fadeUp 0.6s ease-out 0.2s backwards" }}>
         <div className="overflow-x-auto">
@@ -129,8 +126,7 @@ function Products() {
               >
                 <th className="text-left p-3 font-medium">{t("asin")}</th>
                 <th className="text-left p-3 font-medium">{t("title")}</th>
-                <th className="text-right p-3 font-medium">{t("priceUsd")}</th>
-                <th className="text-right p-3 font-medium">{t("priceCop")}</th>
+                <th className="text-right p-3 font-medium w-36">{t("price")}</th>
                 <th className="text-right p-3 font-medium">{t("stock")}</th>
                 <th className="text-left p-3 font-medium">{t("status")}</th>
               </tr>
@@ -144,11 +140,8 @@ function Products() {
                 >
                   <td className="p-3 font-mono text-[11px] text-[#a0adbb]">{p.asin}</td>
                   <td className="p-3 text-[#e8ecf2] max-w-md truncate">{p.title}</td>
-                  <td className="p-3 text-right text-[#a0adbb]">${p.amazon_price_usd}</td>
-                  <td className="p-3 text-right text-[#a0adbb]">
-                    {p.converted_price_cop
-                      ? Number(p.converted_price_cop).toLocaleString()
-                      : "—"}
+                  <td className="p-3 text-right">
+                    <PriceBlock usd={p.amazon_price_usd} cop={p.converted_price_cop} />
                   </td>
                   <td className="p-3 text-right text-[#a0adbb]">{p.stock}</td>
                   <td className="p-3">
@@ -166,6 +159,23 @@ function Products() {
 
       <div className="text-xs text-[#6b7785] mt-3">
         {t("showing")} {filtered.length} {t("of")} {all.length}
+      </div>
+    </div>
+  );
+}
+
+// USD on top (small grey) + COP below (bigger, blue)
+function PriceBlock({ usd, cop }) {
+  if (usd === undefined || usd === null) {
+    return <span className="text-[#6b7785]">—</span>;
+  }
+  return (
+    <div className="text-right leading-tight">
+      <div className="text-[11px] text-[#6b7785]">${Number(usd).toFixed(2)} USD</div>
+      <div className="text-sm font-medium" style={{ color: "#50A0FA" }}>
+        {cop && cop > 0
+          ? Number(cop).toLocaleString() + " COP"
+          : "— COP"}
       </div>
     </div>
   );

@@ -6,6 +6,7 @@ import Products from "./pages/Products.jsx";
 import AddProduct from "./pages/AddProduct.jsx";
 import Blacklist from "./pages/Blacklist.jsx";
 import Settings from "./pages/Settings.jsx";
+import ImportAsins from "./pages/ImportAsins.jsx";
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
         <Route path="add" element={<AddProduct />} />
         <Route path="blacklist" element={<Blacklist />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="import" element={<ImportAsins />} />
       </Route>
     </Routes>
   );
