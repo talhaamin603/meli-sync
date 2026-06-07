@@ -2,6 +2,12 @@
 from sqlmodel import SQLModel, create_engine, Session
 from app.config import settings
 
+if not settings.DATABASE_URL:
+    raise RuntimeError(
+        "DATABASE_URL environment variable is not set. "
+        "Please configure it before starting the application."
+    )
+
 # echo=False keeps the console clean. Set True to see every SQL query.
 engine = create_engine(settings.DATABASE_URL, echo=False)
 
