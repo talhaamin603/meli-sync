@@ -8,8 +8,7 @@ from app.database import init_db
 from app.routers import manual_products
 from app.routers import meli
 from app.routers import amazon as amazon_router
-
-
+from app.routers import auth as auth_router   # ← NEW for Phase A
 
 app = FastAPI(title="Meli Sync - Module 1 & 2")
 
@@ -23,6 +22,8 @@ app.add_middleware(
         "http://localhost:3000",           # Alternative dev port
         "https://*.railway.app",           # Railway frontend
         "https://*.netlify.app",           # Netlify frontend
+        "http://melizone.tech",            # Production domain
+        "https://melizone.tech",           # Production domain HTTPS
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -35,6 +36,8 @@ app.add_middleware(
 app.include_router(manual_products.router)
 app.include_router(meli.router)
 app.include_router(amazon_router.router)
+app.include_router(auth_router.router)        # ← NEW for Phase A
+
 # ============================================================
 # Startup event
 # ============================================================
@@ -43,6 +46,7 @@ def on_startup():
     init_db()
     print("✅ Database tables ready.")
     print("✅ Module 1 & 2 routers loaded.")
+    print("✅ Auth router loaded.")
 
 # ============================================================
 # Health endpoints

@@ -55,6 +55,9 @@ class BlacklistFilter:
         Uses whole-word matching: the term 'cat' will NOT match inside
         'education' - only the standalone word 'cat'.
         """
+        if self.term_count == 0:
+            return {"blocked": False, "reason": None}
+
         clean = normalize_text(title)
         if not clean:
             return {"blocked": False, "reason": None}
