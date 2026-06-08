@@ -158,7 +158,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
 from app.database import get_session
-from app.models import Product, AuditLog, BlacklistRule, Setting
+from app.models import Product, AuditLog, BlacklistRule, Setting, MarginRule
 from app.services.blacklist import BlacklistFilter
 from app.services.pricing import price_product_for_meli
 
@@ -567,3 +567,39 @@ def update_settings(data: SettingsInput,
     
     session.commit()
     return {"message": "Settings saved"}
+
+
+# ============================================================
+# MARGIN RULES ENDPOINTS
+# ============================================================
+
+class MarginRuleInput(BaseModel):
+    id: Optional[int] = None
+    min_price: float
+    max_price: float
+    markup_pct: float
+    sort_order: int
+
+
+@router.get("/margin-rules")
+def get_margin_rules(session: Session = Depends(get_session)):
+    rules = session.exec(select(MarginRule).order_by(MarginRule.sort_order)).all()
+    return {"rules": rules}
+
+
+@router.put("/margin-rules")
+def update_margin_rules(rules: List[MarginRuleInput], session: Session = Depends(get_session)):
+    """Replace all margin rules with the submitted list."""
+    existing = session.exec(select(MarginRule)).all()
+    for r in existing:
+        session.delete(r)
+    for r in rules:
+        session.add(MarginRule(
+            min_price=r.min_price,
+            max_price=r.max_price,
+            markup_pct=r.markup_pct,
+            sort_order=r.sort_order,
+        ))
+    session.commit()
+    updated = session.exec(select(MarginRule).order_by(MarginRule.sort_order)).all()
+    return {"rules": updated}

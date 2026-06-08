@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { getProducts, getExchangeRate, getSyncHistory } from "../api.js";
 
 /* ─── Status badge ─────────────────────────────────────────── */
@@ -17,8 +17,8 @@ function DashboardStatusBadge({ status, stock }) {
   const map = {
     published: { bg: "rgba(34,197,94,0.12)",  fg: "#22c55e", border: "rgba(34,197,94,0.25)",  label: "Active" },
     blocked:   { bg: "rgba(239,68,68,0.12)",  fg: "#ef4444", border: "rgba(239,68,68,0.25)",  label: "Blocked" },
-    failed:    { bg: "rgba(239,68,68,0.12)",  fg: "#ef4444", border: "rgba(239,68,68,0.25)",  label: "Blocked" },
-    pending:   { bg: "rgba(245,158,11,0.12)", fg: "#f59e0b", border: "rgba(245,158,11,0.25)", label: "Pending" },
+    failed:    { bg: "rgba(245,158,11,0.12)", fg: "#f59e0b", border: "rgba(245,158,11,0.25)", label: "Sync Failed" },
+    pending:   { bg: "rgba(80,160,250,0.12)", fg: "#50A0FA", border: "rgba(80,160,250,0.25)", label: "Pending" },
   };
   const s = map[status] || map.pending;
   return (
@@ -158,6 +158,7 @@ function DonutRing({ pctPublished, pctPending, pctBlocked, total }) {
 /* ─── Main Dashboard ────────────────────────────────────────── */
 function Dashboard() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -232,6 +233,7 @@ function Dashboard() {
   const total     = products.length;
   const published = products.filter((p) => p.status === "published").length;
   const blocked   = products.filter((p) => p.status === "blocked").length;
+  const failed    = products.filter((p) => p.status === "failed").length;
   const pending   = products.filter((p) => p.status === "pending").length;
   const safe      = total || 1;
   const pctPublished = (published / safe) * 100;
@@ -247,7 +249,7 @@ function Dashboard() {
     return p.status === statusFilter;
   });
 
-  const statusOrder = { published: 0, pending: 1, blocked: 3 };
+  const statusOrder = { published: 0, pending: 1, failed: 3, blocked: 4 };
   const getStatusOrder = (p) => p.stock === 0 ? 2 : (statusOrder[p.status] ?? 1);
 
   const sortedProducts = sortCol ? [...filteredProducts].sort((a, b) => {
@@ -284,6 +286,7 @@ function Dashboard() {
     { key: "pending",      label: "Pending",       count: products.filter(p => p.status === "pending").length },
     { key: "published",    label: "Active",        count: products.filter(p => p.status === "published").length },
     { key: "blocked",      label: "Blocked",       count: products.filter(p => p.status === "blocked").length },
+    { key: "failed",       label: "Sync Failed",   count: products.filter(p => p.status === "failed").length },
     { key: "out_of_stock", label: "Out of Stock",  count: products.filter(p => p.stock === 0).length },
   ];
 
@@ -366,7 +369,7 @@ function Dashboard() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
             </svg>
           }
-          subtext={`${pctBlocked.toFixed(1)}% of total`}
+          subtext={`${((blocked / safe) * 100).toFixed(1)}% of total`}
           delay={0.3}
         />
         <StatCard
@@ -934,7 +937,16 @@ function Dashboard() {
                             </svg>
                           )}
                         </div>
-                        <span className="text-[#c8d0db] font-medium text-[12px] max-w-[180px] truncate">{p.title}</span>
+                        <button
+                          onClick={() => navigate(`/products/${p.id}/edit`, { state: { product: p } })}
+                          className="text-left font-medium text-[12px] max-w-[180px] truncate transition-colors"
+                          style={{ color: "#c8d0db" }}
+                          onMouseEnter={e => e.currentTarget.style.color = "#50A0FA"}
+                          onMouseLeave={e => e.currentTarget.style.color = "#c8d0db"}
+                          title={p.title}
+                        >
+                          {p.title}
+                        </button>
                       </div>
                     </td>
 

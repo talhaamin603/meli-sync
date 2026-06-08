@@ -1,27 +1,30 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { getProducts, syncProduct, refetchImages, deleteProduct } from "../api.js";
+import { getProducts, syncProduct, deleteProduct, getExchangeRate } from "../api.js";
 
-function StatusBadge({ status, t }) {
+function StatusBadge({ status, stock, t }) {
+  if (stock === 0) {
+    return (
+      <span className="px-2 py-0.5 rounded-md text-[11px] font-medium border"
+        style={{ background: "rgba(239,68,68,0.15)", color: "#ef4444", borderColor: "rgba(239,68,68,0.3)" }}>
+        Out of Stock
+      </span>
+    );
+  }
   const styles = {
-    published: { bg: "rgba(34,197,94,0.15)",  fg: "#22c55e", border: "rgba(34,197,94,0.3)" },
-    blocked:   { bg: "rgba(239,68,68,0.15)",  fg: "#ef4444", border: "rgba(239,68,68,0.3)" },
-    failed:    { bg: "rgba(245,158,11,0.15)", fg: "#f59e0b", border: "rgba(245,158,11,0.3)" },
-    pending:   { bg: "rgba(80,160,250,0.15)", fg: "#50A0FA", border: "rgba(80,160,250,0.3)" },
+    published: { bg: "rgba(34,197,94,0.15)",  fg: "#22c55e", border: "rgba(34,197,94,0.3)",  label: "Active" },
+    blocked:   { bg: "rgba(239,68,68,0.15)",  fg: "#ef4444", border: "rgba(239,68,68,0.3)",  label: "Blocked" },
+    failed:    { bg: "rgba(245,158,11,0.15)", fg: "#f59e0b", border: "rgba(245,158,11,0.3)", label: "Sync Failed" },
+    pending:   { bg: "rgba(80,160,250,0.15)", fg: "#50A0FA", border: "rgba(80,160,250,0.3)", label: "Pending" },
   };
   const s = styles[status] || styles.pending;
-  const labelKey =
-    status === "published" ? "published" :
-    status === "blocked"   ? "blocked"   :
-    status === "failed"    ? "blocked"   :
-                             "pending";
   return (
     <span
       className="px-2 py-0.5 rounded-md text-[11px] font-medium border"
       style={{ background: s.bg, color: s.fg, borderColor: s.border }}
     >
-      {t(labelKey)}
+      {s.label}
     </span>
   );
 }
@@ -76,10 +79,11 @@ function Products() {
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState("");
   const [syncingId, setSyncingId]           = useState(null);
-  const [refetching, setRefetching]         = useState(false);
   const [toast, setToast]                   = useState(null); // { msg, ok }
   const [confirmDelete, setConfirmDelete]   = useState(null); // product object
   const [deleting, setDeleting]             = useState(false);
+  const [exchangeRate, setExchangeRate]     = useState(null);
+  const [statusSort, setStatusSort]         = useState(null); // null | "asc" | "desc"
 
   useEffect(() => {
     getProducts()
@@ -89,6 +93,9 @@ function Products() {
       })
       .catch(() => setError(t("errorLoading")))
       .finally(() => setLoading(false));
+    getExchangeRate()
+      .then((data) => setExchangeRate(data.usd_to_cop))
+      .catch(() => {});
     // eslint-disable-next-line
   }, []);
 
@@ -97,21 +104,6 @@ function Products() {
     setTimeout(() => setToast(null), 3500);
   }
 
-  async function handleRefetchImages() {
-    setRefetching(true);
-    try {
-      const res = await refetchImages();
-      showToast(`Images updated for ${res.updated} product(s). Reload to see changes.`, true);
-      // reload product list
-      const data = await getProducts();
-      const list = Array.isArray(data) ? data : (data.products || []);
-      setAll(list);
-    } catch (e) {
-      showToast("Failed to refetch images.", false);
-    } finally {
-      setRefetching(false);
-    }
-  }
 
   async function handleSync(product) {
     if (syncingId) return;
@@ -162,8 +154,15 @@ function Products() {
   if (loading) return <div className="text-[#a0adbb]">{t("loadingProducts")}</div>;
   if (error)   return <div className="text-red-400">{error}</div>;
 
+  // Status sort order: Active → Pending → Out of Stock → Sync Failed → Blocked
+  const STATUS_ORDER = { published: 0, pending: 1, out_of_stock: 2, failed: 3, blocked: 4 };
+  function statusRank(p) {
+    if (p.stock === 0) return STATUS_ORDER.out_of_stock;
+    return STATUS_ORDER[p.status] ?? 2;
+  }
+
   const q = search.toLowerCase().trim();
-  const filtered = all.filter((p) => {
+  const base = all.filter((p) => {
     if (filter !== "all" && p.status !== filter) return false;
     if (!q) return true;
     return (
@@ -172,11 +171,20 @@ function Products() {
     );
   });
 
+  const filtered = statusSort
+    ? [...base].sort((a, b) =>
+        statusSort === "asc"
+          ? statusRank(a) - statusRank(b)
+          : statusRank(b) - statusRank(a)
+      )
+    : base;
+
   const counts = {
     all:       all.length,
     pending:   all.filter((p) => p.status === "pending").length,
     published: all.filter((p) => p.status === "published").length,
     blocked:   all.filter((p) => p.status === "blocked").length,
+    failed:    all.filter((p) => p.status === "failed").length,
   };
 
   return (
@@ -253,7 +261,7 @@ function Products() {
 
       {/* Filter tabs */}
       <div className="flex items-center gap-2 mb-4 flex-wrap">
-        {["all", "pending", "published", "blocked"].map((k) => (
+        {["all", "pending", "published", "blocked", "failed"].map((k) => (
           <button
             key={k}
             onClick={() => setFilter(k)}
@@ -267,18 +275,9 @@ function Products() {
                 : { background: "rgba(80,160,250,0.06)", border: "1px solid rgba(80,160,250,0.15)" }
             }
           >
-            {k === "all" ? t("filterAll") : t(k)} ({counts[k]})
+            {k === "all" ? t("filterAll") : k === "failed" ? "Sync Failed" : t(k)} ({counts[k]})
           </button>
         ))}
-        <button
-          onClick={handleRefetchImages}
-          disabled={refetching}
-          className="ml-auto px-3 py-1.5 rounded-lg text-xs font-medium transition-all disabled:opacity-50"
-          style={{ background: "rgba(80,160,250,0.06)", border: "1px solid rgba(80,160,250,0.15)", color: "#a0adbb" }}
-          title="Re-fetch all images from Amazon for products that have only one photo"
-        >
-          {refetching ? "Fetching…" : "Refresh All Images"}
-        </button>
       </div>
 
       {/* Search */}
@@ -312,9 +311,24 @@ function Products() {
                 <th className="text-left p-3 font-medium">{t("asin")}</th>
                 <th className="p-3 font-medium w-12"></th>
                 <th className="text-left p-3 font-medium">{t("title")}</th>
-                <th className="text-right p-3 font-medium w-36">{t("price")}</th>
+                <th className="text-right p-3 font-medium">Amazon Price</th>
+                <th className="text-right p-3 font-medium">ML Price</th>
+                <th className="text-right p-3 font-medium">Margin</th>
                 <th className="text-right p-3 font-medium">{t("stock")}</th>
-                <th className="text-left p-3 font-medium">{t("status")}</th>
+                <th className="text-left p-3 font-medium">
+                  <button
+                    onClick={() => setStatusSort(s => s === "asc" ? "desc" : "asc")}
+                    className="inline-flex items-center gap-1 hover:text-white transition-colors"
+                    style={{ color: statusSort ? "#50A0FA" : undefined }}
+                    title="Sort by status"
+                  >
+                    {t("status")}
+                    <span className="flex flex-col leading-none" style={{ fontSize: 8 }}>
+                      <span style={{ opacity: statusSort === "asc"  ? 1 : 0.3 }}>▲</span>
+                      <span style={{ opacity: statusSort === "desc" ? 1 : 0.3 }}>▼</span>
+                    </span>
+                  </button>
+                </th>
                 <th className="text-center p-3 font-medium">Actions</th>
               </tr>
             </thead>
@@ -322,6 +336,14 @@ function Products() {
               {filtered.map((p) => {
                 const url = meliUrl(p);
                 const isSyncing = syncingId === p.id;
+                const amazonUsd = Number(p.amazon_price_usd || 0);
+                const mlUsd = exchangeRate && p.converted_price_cop
+                  ? p.converted_price_cop / exchangeRate
+                  : null;
+                const margin = mlUsd !== null ? mlUsd - amazonUsd : null;
+                const marginPct = margin !== null && mlUsd > 0
+                  ? (margin / mlUsd) * 100
+                  : null;
                 return (
                   <tr
                     key={p.id || p.asin}
@@ -334,13 +356,50 @@ function Products() {
                         ? <img src={p.image_url} alt="" className="w-9 h-9 rounded object-cover" style={{ background: "#1f2937" }} />
                         : <div className="w-9 h-9 rounded" style={{ background: "#1f2937" }} />}
                     </td>
-                    <td className="p-3 text-[#e8ecf2] max-w-md truncate">{p.title}</td>
+                    <td className="p-3 max-w-md truncate">
+                      <button
+                        onClick={() => navigate(`/products/${p.id}/edit`, { state: { product: p } })}
+                        className="text-left hover:text-white transition-colors truncate max-w-full"
+                        style={{ color: "#e8ecf2" }}
+                        onMouseEnter={e => e.currentTarget.style.color = "#50A0FA"}
+                        onMouseLeave={e => e.currentTarget.style.color = "#e8ecf2"}
+                        title={p.title}
+                      >
+                        {p.title}
+                      </button>
+                    </td>
+                    {/* Amazon Price */}
                     <td className="p-3 text-right">
-                      <PriceBlock usd={p.amazon_price_usd} cop={p.converted_price_cop} />
+                      <span className="text-[#c8d0db] font-bold text-[13px]">
+                        ${amazonUsd.toFixed(2)}
+                      </span>
+                    </td>
+
+                    {/* ML Price */}
+                    <td className="p-3 text-right">
+                      <span className="font-bold text-[13px]" style={{ color: "#50A0FA" }}>
+                        {mlUsd !== null ? `$${mlUsd.toFixed(2)}` : "—"}
+                      </span>
+                    </td>
+
+                    {/* Margin */}
+                    <td className="p-3 text-right">
+                      {margin !== null ? (
+                        <div className="leading-tight">
+                          <div className="text-[13px] font-bold text-green-400">
+                            +${margin.toFixed(2)}
+                          </div>
+                          <div className="text-[10px] text-[#6b7785]">
+                            {marginPct.toFixed(1)}%
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-[#4a5568]">—</span>
+                      )}
                     </td>
                     <td className="p-3 text-right text-[#a0adbb]">{p.stock}</td>
                     <td className="p-3">
-                      <StatusBadge status={p.status} t={t} />
+                      <StatusBadge status={p.status} stock={p.stock} t={t} />
                     </td>
                     <td className="p-3">
                       <div className="flex items-center justify-center gap-1.5">
@@ -430,20 +489,6 @@ function ActionBtn({ title, color, onClick, disabled, href, spinning, children }
     <button title={title} style={base} onClick={disabled ? undefined : onClick} disabled={disabled}>
       {children}
     </button>
-  );
-}
-
-function PriceBlock({ usd, cop }) {
-  if (usd === undefined || usd === null) {
-    return <span className="text-[#6b7785]">—</span>;
-  }
-  return (
-    <div className="text-right leading-tight">
-      <div className="text-[11px] text-[#6b7785]">${Number(usd).toFixed(2)} USD</div>
-      <div className="text-sm font-medium" style={{ color: "#50A0FA" }}>
-        {cop && cop > 0 ? Number(cop).toLocaleString() + " COP" : "— COP"}
-      </div>
-    </div>
   );
 }
 

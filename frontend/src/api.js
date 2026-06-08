@@ -34,6 +34,17 @@ export async function deleteProduct(id) {
   return res.data;
 }
 
+// ---- MARGIN RULES ----
+export async function getMarginRules() {
+  const res = await api.get("/margin-rules");
+  return res.data;
+}
+
+export async function updateMarginRules(rules) {
+  const res = await api.put("/margin-rules", rules);
+  return res.data;
+}
+
 // ---- RECYCLE BIN ----
 export async function getRecycleBin() {
   const res = await api.get("/recycle-bin");

@@ -4,7 +4,7 @@ load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.database import init_db, migrate_db
+from app.database import init_db, migrate_db, seed_margin_rules
 from app.routers import manual_products
 from app.routers import meli
 from app.routers import amazon as amazon_router
@@ -47,6 +47,7 @@ app.include_router(sync_router.router)
 def on_startup():
     init_db()
     migrate_db()
+    seed_margin_rules()
     print("Database tables ready.")
     print("Module 1 & 2 routers loaded.")
     # print("Auth router loaded.")

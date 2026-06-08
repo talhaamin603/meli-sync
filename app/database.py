@@ -45,6 +45,31 @@ def migrate_db():
             print(f"[migrate] backfilled images for {len(rows)} products")
 
 
+_DEFAULT_MARGIN_RULES = [
+    {"min": 1,   "max": 30,    "markup": 100, "order": 1},
+    {"min": 30,  "max": 60,    "markup": 90,  "order": 2},
+    {"min": 60,  "max": 100,   "markup": 80,  "order": 3},
+    {"min": 100, "max": 200,   "markup": 70,  "order": 4},
+    {"min": 200, "max": 10000, "markup": 75,  "order": 5},
+]
+
+def seed_margin_rules():
+    """Insert default margin rules if the table is empty."""
+    from app.models import MarginRule
+    from sqlmodel import Session, select
+    with Session(engine) as session:
+        existing = session.exec(select(MarginRule)).first()
+        if existing:
+            return
+        for r in _DEFAULT_MARGIN_RULES:
+            session.add(MarginRule(
+                min_price=r["min"], max_price=r["max"],
+                markup_pct=r["markup"], sort_order=r["order"],
+            ))
+        session.commit()
+        print("[migrate] seeded default margin rules")
+
+
 def get_session():
     """Yields a database session for one request, then closes it."""
     with Session(engine) as session:

@@ -83,3 +83,12 @@ class Setting(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     key: str = Field(index=True, unique=True)
     value: str = ""
+
+
+class MarginRule(SQLModel, table=True):
+    """Tiered markup rules: different % increase based on Amazon price range."""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    min_price: float = 0.0     # inclusive lower bound (USD)
+    max_price: float = 0.0     # exclusive upper bound (USD); last rule is inclusive
+    markup_pct: float = 100.0  # price increase percentage (100 = double the price)
+    sort_order: int = 0        # display / evaluation order

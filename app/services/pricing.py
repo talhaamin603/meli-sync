@@ -21,7 +21,7 @@ Setting table so the dashboard can change them without code changes.
 from datetime import datetime, timedelta
 import httpx
 from sqlmodel import Session, select
-from app.models import Setting, ExchangeRate
+from app.models import Setting, ExchangeRate, MarginRule
 
 
 INSURANCE_USD = 5.00              # fixed per client spec
@@ -50,6 +50,21 @@ def get_shipping_usd(session: Session) -> float:
 
 def get_margin_pct(session: Session) -> float:
     return _get_setting(session, "profit_margin_pct", DEFAULT_MARGIN_PCT)
+
+
+def get_tiered_markup(amazon_price_usd: float, session: Session) -> float:
+    """Return the markup % for the given price from the MarginRule table.
+    Falls back to the global margin setting if no rules exist."""
+    rules = session.exec(
+        select(MarginRule).order_by(MarginRule.sort_order)
+    ).all()
+    if not rules:
+        return get_margin_pct(session)
+    for rule in rules:
+        if rule.min_price <= amazon_price_usd < rule.max_price:
+            return rule.markup_pct
+    # price is at or above the last rule's max — use the last rule
+    return rules[-1].markup_pct
 
 
 # ---------- exchange rate ----------
@@ -121,8 +136,8 @@ def calculate_final_cop(
 
 
 def price_product_for_meli(amazon_price_usd: float, session: Session) -> dict:
-    """High-level helper: applies current settings + live rate to a price."""
+    """High-level helper: applies tiered markup + live rate to a price."""
     shipping = get_shipping_usd(session)
-    margin = get_margin_pct(session)
+    margin = get_tiered_markup(amazon_price_usd, session)
     rate = get_usd_to_cop(session)
     return calculate_final_cop(amazon_price_usd, shipping, margin, rate)

@@ -9,6 +9,7 @@ import Blacklist from "./pages/Blacklist.jsx";
 import Settings from "./pages/Settings.jsx";
 import ImportAsins from "./pages/ImportAsins.jsx";
 import RecycleBin from "./pages/RecycleBin.jsx";
+import MarginConfig from "./pages/MarginConfig.jsx";
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
         <Route path="settings" element={<Settings />} />
         <Route path="import" element={<ImportAsins />} />
         <Route path="recycle-bin" element={<RecycleBin />} />
+        <Route path="margin-config" element={<MarginConfig />} />
       </Route>
     </Routes>
   );

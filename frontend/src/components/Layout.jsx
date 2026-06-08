@@ -38,6 +38,13 @@ function IconBlacklist() {
     </svg>
   );
 }
+function IconMargin() {
+  return (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+    </svg>
+  );
+}
 function IconTrash() {
   return (
     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
@@ -146,7 +153,8 @@ function Layout() {
           <NavItem to="/dashboard"  icon={<IconDashboard />}  label={t("dashboard")} />
           <NavItem to="/products"   icon={<IconProducts />}   label={t("products")} />
           <NavItem to="/add"        icon={<IconAdd />}        label={t("addProduct")} />
-          <NavItem to="/import"     icon={<IconImport />}     label={t("importByAsin")} />
+          <NavItem to="/import"        icon={<IconImport />}  label={t("importByAsin")} />
+          <NavItem to="/margin-config" icon={<IconMargin />}  label="Margin Config" />
           <NavItem to="/blacklist"   icon={<IconBlacklist />}  label={t("blacklist")} />
           <NavItem to="/recycle-bin" icon={<IconTrash />}      label="Recycle Bin" />
           <NavItem to="/settings"    icon={<IconSettings />}   label={t("settings")} />
