@@ -1,5 +1,7 @@
 ﻿"""Database connection and session handling."""
+import json
 from sqlmodel import SQLModel, create_engine, Session
+from sqlalchemy import text
 from app.config import settings
 
 # echo=False keeps the console clean. Set True to see every SQL query.
@@ -10,6 +12,37 @@ engine = create_engine(settings.DATABASE_URL, echo=False, connect_args=_connect_
 def init_db():
     """Create all tables defined in models.py if they don't exist."""
     SQLModel.metadata.create_all(engine)
+
+
+def migrate_db():
+    """Add new columns to existing tables that predate them."""
+    migrations = [
+        "ALTER TABLE product ADD COLUMN images TEXT",
+        "ALTER TABLE product ADD COLUMN initial_stock INTEGER",
+        "ALTER TABLE product ADD COLUMN times_ordered INTEGER DEFAULT 0",
+        "ALTER TABLE product ADD COLUMN deleted_at DATETIME",
+    ]
+    with engine.connect() as conn:
+        for stmt in migrations:
+            try:
+                conn.execute(text(stmt))
+                conn.commit()
+            except Exception:
+                pass  # column already exists
+
+        # Backfill images from image_url for all products that still have images = NULL.
+        # This ensures existing products show at least their one known image in the edit page.
+        rows = conn.execute(
+            text("SELECT id, image_url FROM product WHERE images IS NULL AND image_url IS NOT NULL")
+        ).fetchall()
+        for row_id, image_url in rows:
+            conn.execute(
+                text("UPDATE product SET images = :imgs WHERE id = :pid"),
+                {"imgs": json.dumps([image_url]), "pid": row_id},
+            )
+        if rows:
+            conn.commit()
+            print(f"[migrate] backfilled images for {len(rows)} products")
 
 
 def get_session():

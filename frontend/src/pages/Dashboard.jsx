@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
-import { getProducts, getExchangeRate } from "../api.js";
+import { getProducts, getExchangeRate, getSyncHistory } from "../api.js";
 
 /* ─── Status badge ─────────────────────────────────────────── */
 function DashboardStatusBadge({ status, stock }) {
@@ -165,6 +165,7 @@ function Dashboard() {
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState("all");
   const [exchangeRate, setExchangeRate] = useState(null);
+  const [syncHistory, setSyncHistory] = useState([]);
   const [sortCol, setSortCol] = useState(null);
   const [sortDir, setSortDir] = useState("asc");
   const PAGE_SIZE = 10;
@@ -198,6 +199,9 @@ function Dashboard() {
       .finally(() => setLoading(false));
     getExchangeRate()
       .then((data) => setExchangeRate(data.usd_to_cop))
+      .catch(() => {});
+    getSyncHistory()
+      .then((data) => setSyncHistory(Array.isArray(data) ? data : []))
       .catch(() => {});
     // eslint-disable-next-line
   }, []);
@@ -381,74 +385,86 @@ function Dashboard() {
         />
       </div>
 
-      {/* ── Distribution + Exchange Rate ── */}
+      {/* ── MercadoLibre Stats + Exchange Rate ── */}
+      {(() => {
+        const nowMs = Date.now();
+        const h24 = 24 * 60 * 60 * 1000;
+        const added24h = products.filter(p => nowMs - new Date(p.created_at).getTime() <= h24).length;
+        const added48to24h = products.filter(p => {
+          const age = nowMs - new Date(p.created_at).getTime();
+          return age > h24 && age <= 2 * h24;
+        }).length;
+        const delta = added24h - added48to24h;
+        const deltaUp = delta > 0;
+        const deltaDown = delta < 0;
+        const deltaColor = deltaUp ? "#22c55e" : deltaDown ? "#ef4444" : "#6b7785";
+
+        return (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-        {/* Distribution */}
+        {/* MercadoLibre Stats Card */}
         <div
           className="card rounded-xl p-5 lg:col-span-2 group hover:-translate-y-1 transition-all duration-300 relative overflow-hidden"
           style={{ animation: "fadeUp 0.6s ease-out 0.5s backwards" }}
           onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(80,160,250,0.3)"; }}
           onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(80,160,250,0.15)"; }}
         >
-          {/* Hover glow */}
           <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
             style={{ background: "radial-gradient(circle at 50% 110%, rgba(80,160,250,0.07), transparent 70%)" }}
           />
 
-          <div className="relative z-10 flex flex-col sm:flex-row gap-6">
-            {/* Left: donut + title */}
-            <div className="flex flex-col items-center gap-3 flex-shrink-0">
-              <div className="text-sm font-bold text-white self-start">{t("distribution")}</div>
-              <DonutRing
-                pctPublished={pctPublished}
-                pctPending={pctPending}
-                pctBlocked={pctBlocked}
-                total={total}
-              />
-            </div>
+          <div className="relative z-10">
+            <div className="text-sm font-bold text-white mb-5">MercadoLibre Overview</div>
 
-            {/* Right: legend + bar */}
-            <div className="flex-1 flex flex-col justify-between gap-4">
-              {/* Progress bar */}
-              <div>
-                <div className="h-2.5 rounded-full overflow-hidden flex gap-0.5 mb-4 mt-5"
-                  style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}
-                >
-                  {published > 0 && (
-                    <div className="h-full rounded-full"
-                      style={{ width: `${pctPublished}%`, background: "linear-gradient(90deg, #22c55e, #4ade80)", transition: "width 1s ease-out" }} />
-                  )}
-                  {pending > 0 && (
-                    <div className="h-full rounded-full"
-                      style={{ width: `${pctPending}%`, background: "linear-gradient(90deg, #f59e0b, #fbbf24)", transition: "width 1s ease-out 0.1s" }} />
-                  )}
-                  {blocked > 0 && (
-                    <div className="h-full rounded-full"
-                      style={{ width: `${pctBlocked}%`, background: "linear-gradient(90deg, #ef4444, #f87171)", transition: "width 1s ease-out 0.2s" }} />
-                  )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+              {/* Active on ML */}
+              <div className="rounded-xl p-4" style={{ background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.15)" }}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-[10px] uppercase tracking-widest font-bold text-[#6b7785]">Active on Mercado Libre</div>
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "rgba(34,197,94,0.12)" }}>
+                    <svg className="w-4 h-4" fill="none" stroke="#22c55e" viewBox="0 0 24 24" strokeWidth="2.2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
                 </div>
-
-                {/* Legend rows */}
-                <div className="space-y-2.5">
-                  {[
-                    { label: t("published"), count: published, pct: pctPublished, color: "#22c55e", bg: "rgba(34,197,94,0.1)" },
-                    { label: t("pending"),   count: pending,   pct: pctPending,   color: "#f59e0b", bg: "rgba(245,158,11,0.1)" },
-                    { label: t("blocked"),   count: blocked,   pct: pctBlocked,   color: "#ef4444", bg: "rgba(239,68,68,0.1)"  },
-                  ].map(({ label, count, pct, color, bg }) => (
-                    <div key={label} className="flex items-center gap-3">
-                      <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: color, boxShadow: `0 0 6px ${color}80` }} />
-                      <div className="flex-1 text-xs text-[#a0adbb]">{label}</div>
-                      <div className="text-xs font-bold text-white">{count}</div>
-                      <div
-                        className="text-[10px] font-semibold px-1.5 py-0.5 rounded"
-                        style={{ background: bg, color }}
-                      >
-                        {pct.toFixed(1)}%
-                      </div>
-                    </div>
-                  ))}
+                <div className="text-4xl font-black text-white tracking-tight" style={{ textShadow: "0 0 30px rgba(34,197,94,0.3)" }}>
+                  {published.toLocaleString()}
+                </div>
+                <div className="text-[11px] mt-1.5 font-medium" style={{ color: "#22c55e99" }}>
+                  {pctPublished.toFixed(1)}% of total catalog
                 </div>
               </div>
+
+              {/* Added in last 24h */}
+              <div className="rounded-xl p-4" style={{ background: "rgba(80,160,250,0.06)", border: "1px solid rgba(80,160,250,0.15)" }}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-[10px] uppercase tracking-widest font-bold text-[#6b7785]">Added in Last 24h</div>
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "rgba(80,160,250,0.12)" }}>
+                    <svg className="w-4 h-4" fill="none" stroke="#50A0FA" viewBox="0 0 24 24" strokeWidth="2.2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                  </div>
+                </div>
+                <div className="text-4xl font-black text-white tracking-tight" style={{ textShadow: "0 0 30px rgba(80,160,250,0.3)" }}>
+                  {added24h}
+                </div>
+                <div className="flex items-center gap-1.5 mt-1.5">
+                  {deltaUp && (
+                    <svg className="w-3.5 h-3.5" fill="none" stroke={deltaColor} viewBox="0 0 24 24" strokeWidth="3">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+                    </svg>
+                  )}
+                  {deltaDown && (
+                    <svg className="w-3.5 h-3.5" fill="none" stroke={deltaColor} viewBox="0 0 24 24" strokeWidth="3">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  )}
+                  <span className="text-[11px] font-bold" style={{ color: deltaColor }}>
+                    {delta === 0 ? "Same as yesterday" : `${Math.abs(delta)} ${deltaUp ? "more" : "fewer"} than yesterday`}
+                  </span>
+                </div>
+              </div>
+
             </div>
           </div>
         </div>
@@ -508,6 +524,247 @@ function Dashboard() {
             </svg>
           </div>
         </div>
+      </div>
+        );
+      })()}
+
+      {/* ── Secondary Stat Boxes ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+
+        {/* Box 1 — Sales This Month */}
+        <div
+          className="rounded-xl p-5 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300"
+          style={{
+            animation: "fadeUp 0.6s ease-out 0.5s backwards",
+            background: "linear-gradient(135deg, rgba(80,160,250,0.04) 0%, rgba(16,21,31,0.7) 100%)",
+            border: "1px solid rgba(80,160,250,0.12)",
+          }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(80,160,250,0.35)"; e.currentTarget.style.boxShadow = "0 8px 32px rgba(80,160,250,0.1)"; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(80,160,250,0.12)"; e.currentTarget.style.boxShadow = "none"; }}
+        >
+          {/* Top accent line */}
+          <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: "linear-gradient(90deg, transparent, rgba(80,160,250,0.6), transparent)" }} />
+
+          <div className="flex items-start justify-between mb-3">
+            <div className="text-[10px] uppercase tracking-widest font-bold text-[#6b7785]">Sales This Month</div>
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center text-lg"
+              style={{ background: "rgba(80,160,250,0.1)", boxShadow: "0 4px 12px rgba(80,160,250,0.2)" }}>
+              💵
+            </div>
+          </div>
+
+          {/* Dollar amount */}
+          <div className="text-2xl font-black text-white tracking-tight mb-0.5" style={{ textShadow: "0 0 20px rgba(80,160,250,0.3)" }}>
+            $0.00
+          </div>
+
+          {/* Order count */}
+          <div className="text-[11px] text-[#6b7785] mb-2">
+            0 orders this month
+          </div>
+
+          {/* Delta */}
+          <div className="flex items-center gap-1.5">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="#6b7785" viewBox="0 0 24 24" strokeWidth="3">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M20 12H4" />
+            </svg>
+            <span className="text-[11px] font-bold text-[#6b7785]">No data yet</span>
+          </div>
+        </div>
+
+        {/* Box 2 — Amazon Sync */}
+        {(() => {
+          const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+          const syncsToday = syncHistory.filter(s => new Date(s.started_at) >= todayStart).length;
+          const lastSync = syncHistory.find(s => s.finished_at);
+          let lastSyncLabel = "Never";
+          if (lastSync) {
+            const diffMs = Date.now() - new Date(lastSync.finished_at).getTime();
+            const diffMin = Math.floor(diffMs / 60000);
+            const diffHr  = Math.floor(diffMin / 60);
+            const diffDay = Math.floor(diffHr / 24);
+            lastSyncLabel = diffMin < 1 ? "Just now"
+              : diffMin < 60 ? `${diffMin} min ago`
+              : diffHr  < 24 ? `${diffHr} hr ago`
+              : `${diffDay}d ago`;
+          }
+          return (
+            <div
+              className="rounded-xl p-5 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300"
+              style={{
+                animation: "fadeUp 0.6s ease-out 0.6s backwards",
+                background: "linear-gradient(135deg, rgba(80,160,250,0.04) 0%, rgba(16,21,31,0.7) 100%)",
+                border: "1px solid rgba(80,160,250,0.12)",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(80,160,250,0.35)"; e.currentTarget.style.boxShadow = "0 8px 32px rgba(80,160,250,0.1)"; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(80,160,250,0.12)"; e.currentTarget.style.boxShadow = "none"; }}
+            >
+              <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: "linear-gradient(90deg, transparent, rgba(80,160,250,0.6), transparent)" }} />
+
+              <div className="flex items-start justify-between mb-3">
+                <div className="text-[10px] uppercase tracking-widest font-bold text-[#6b7785]">Amazon Sync</div>
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center"
+                  style={{ background: "rgba(80,160,250,0.1)", boxShadow: "0 4px 12px rgba(80,160,250,0.2)" }}>
+                  <svg className={`w-4 h-4 text-[#50A0FA] ${syncsToday > 0 ? "animate-spin" : ""}`} style={{ animationDuration: "3s" }} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                </div>
+              </div>
+
+              <div className="text-2xl font-black text-white tracking-tight mb-0.5" style={{ textShadow: "0 0 20px rgba(80,160,250,0.3)" }}>
+                {syncsToday}
+              </div>
+
+              <div className="text-[11px] text-[#6b7785] mb-2">
+                {syncsToday === 1 ? "sync run today" : "syncs run today"}
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <svg className="w-3 h-3 text-[#6b7785]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-[11px] font-bold" style={{ color: lastSync ? "#50A0FA" : "#6b7785" }}>
+                  Last sync: {lastSyncLabel}
+                </span>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Box 3 — Out of Stock Warning */}
+        {(() => {
+          const outOfStock = products.filter(p => p.stock === 0);
+          const count = outOfStock.length;
+          const publishedOos = outOfStock.filter(p => p.status === "published").length;
+          const urgent = publishedOos > 0;
+          const accentColor = count === 0 ? "#22c55e" : urgent ? "#ef4444" : "#f59e0b";
+          const borderColor = count === 0 ? "rgba(34,197,94,0.2)" : urgent ? "rgba(239,68,68,0.2)" : "rgba(245,158,11,0.2)";
+          const bgColor = count === 0 ? "rgba(34,197,94,0.04)" : urgent ? "rgba(239,68,68,0.04)" : "rgba(245,158,11,0.04)";
+          return (
+            <div
+              className="rounded-xl p-5 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300"
+              style={{
+                animation: "fadeUp 0.6s ease-out 0.7s backwards",
+                background: `linear-gradient(135deg, ${bgColor} 0%, rgba(16,21,31,0.7) 100%)`,
+                border: `1px solid ${borderColor}`,
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = accentColor + "55"; e.currentTarget.style.boxShadow = `0 8px 32px ${accentColor}18`; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = borderColor; e.currentTarget.style.boxShadow = "none"; }}
+            >
+              <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: `linear-gradient(90deg, transparent, ${accentColor}80, transparent)` }} />
+
+              <div className="flex items-start justify-between mb-3">
+                <div className="text-[10px] uppercase tracking-widest font-bold text-[#6b7785]">Needs Attention</div>
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center text-lg"
+                  style={{ background: `${accentColor}18`, boxShadow: `0 4px 12px ${accentColor}30` }}>
+                  {count === 0 ? "✅" : "⚠️"}
+                </div>
+              </div>
+
+              <div className="text-2xl font-black tracking-tight mb-0.5" style={{ color: accentColor, textShadow: `0 0 20px ${accentColor}40` }}>
+                {count}
+              </div>
+
+              <div className="text-[11px] text-[#6b7785] mb-2">
+                {count === 0 ? "All products in stock" : `product${count !== 1 ? "s" : ""} out of stock`}
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <svg className="w-3 h-3" fill="none" stroke={accentColor} viewBox="0 0 24 24" strokeWidth="2.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                </svg>
+                <span className="text-[11px] font-bold" style={{ color: accentColor }}>
+                  {urgent
+                    ? `${publishedOos} listed on ML — urgent`
+                    : count > 0
+                    ? "Not listed, restock soon"
+                    : "No action needed"}
+                </span>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Box 4 — Average Margin */}
+        {(() => {
+          const rate = exchangeRate || 1;
+          const withPricing = products.filter(p => p.converted_price_cop > 0 && p.amazon_price_usd > 0);
+          const calcMargin = p => {
+            const ml = p.converted_price_cop / rate;
+            return ((ml - p.amazon_price_usd) / ml) * 100;
+          };
+          const avgMargin = withPricing.length > 0
+            ? withPricing.reduce((sum, p) => sum + calcMargin(p), 0) / withPricing.length
+            : null;
+
+          // Compare recent (last 7 days) avg vs older avg for the arrow
+          const week = 7 * 24 * 60 * 60 * 1000;
+          const recent = withPricing.filter(p => Date.now() - new Date(p.created_at).getTime() <= week);
+          const older  = withPricing.filter(p => Date.now() - new Date(p.created_at).getTime() >  week);
+          const recentAvg = recent.length > 0 ? recent.reduce((s, p) => s + calcMargin(p), 0) / recent.length : null;
+          const olderAvg  = older.length  > 0 ? older.reduce((s, p)  => s + calcMargin(p), 0) / older.length  : null;
+          const trend = recentAvg !== null && olderAvg !== null ? recentAvg - olderAvg : 0;
+          const trendUp   = trend > 0.5;
+          const trendDown = trend < -0.5;
+          const accentColor = trendUp ? "#22c55e" : trendDown ? "#ef4444" : "#50A0FA";
+
+          return (
+            <div
+              className="rounded-xl p-5 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300"
+              style={{
+                animation: "fadeUp 0.6s ease-out 0.8s backwards",
+                background: "linear-gradient(135deg, rgba(80,160,250,0.04) 0%, rgba(16,21,31,0.7) 100%)",
+                border: "1px solid rgba(80,160,250,0.12)",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = `${accentColor}55`; e.currentTarget.style.boxShadow = `0 8px 32px ${accentColor}18`; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(80,160,250,0.12)"; e.currentTarget.style.boxShadow = "none"; }}
+            >
+              <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: `linear-gradient(90deg, transparent, ${accentColor}80, transparent)` }} />
+
+              <div className="flex items-start justify-between mb-3">
+                <div className="text-[10px] uppercase tracking-widest font-bold text-[#6b7785]">Avg. Profit Margin</div>
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center"
+                  style={{ background: `${accentColor}18`, boxShadow: `0 4px 12px ${accentColor}25` }}>
+                  <svg className="w-4 h-4" fill="none" stroke={accentColor} viewBox="0 0 24 24" strokeWidth="2.2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                </div>
+              </div>
+
+              <div className="text-2xl font-black tracking-tight mb-0.5" style={{ color: accentColor, textShadow: `0 0 20px ${accentColor}40` }}>
+                {avgMargin !== null ? `${avgMargin.toFixed(1)}%` : "—"}
+              </div>
+
+              <div className="text-[11px] text-[#6b7785] mb-2">
+                across {withPricing.length} priced product{withPricing.length !== 1 ? "s" : ""}
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                {trendUp && (
+                  <svg className="w-3.5 h-3.5" fill="none" stroke={accentColor} viewBox="0 0 24 24" strokeWidth="3">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+                  </svg>
+                )}
+                {trendDown && (
+                  <svg className="w-3.5 h-3.5" fill="none" stroke={accentColor} viewBox="0 0 24 24" strokeWidth="3">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                )}
+                {!trendUp && !trendDown && (
+                  <svg className="w-3.5 h-3.5" fill="none" stroke={accentColor} viewBox="0 0 24 24" strokeWidth="3">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M20 12H4" />
+                  </svg>
+                )}
+                <span className="text-[11px] font-bold" style={{ color: accentColor }}>
+                  {trendUp   ? `+${Math.abs(trend).toFixed(1)}% vs older products` :
+                   trendDown ? `-${Math.abs(trend).toFixed(1)}% vs older products` :
+                               "Stable margin"}
+                </span>
+              </div>
+            </div>
+          );
+        })()}
+
       </div>
 
       {/* ── Recent Products ── */}

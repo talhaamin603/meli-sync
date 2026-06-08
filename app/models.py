@@ -11,9 +11,12 @@ class Product(SQLModel, table=True):
     title: str
     description: Optional[str] = None
     image_url: Optional[str] = None
+    images: Optional[str] = None          # JSON array of all image URLs
     amazon_price_usd: float = 0.0
     converted_price_cop: float = 0.0   # filled in Module 2
     stock: int = 0
+    initial_stock: Optional[int] = None
+    times_ordered: int = 0
     is_prime: bool = False
     meli_item_id: Optional[str] = None  # filled in Module 2
     meli_category: Optional[str] = None  # filled in Module 2
@@ -22,6 +25,7 @@ class Product(SQLModel, table=True):
     block_reason: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+    deleted_at: Optional[datetime] = None  # set on soft-delete, None = active
 
 
 class BlacklistRule(SQLModel, table=True):

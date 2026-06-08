@@ -38,6 +38,16 @@ function IconBlacklist() {
     </svg>
   );
 }
+function IconTrash() {
+  return (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+      <polyline points="3 6 5 6 21 6"/>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M10 11v6M14 11v6"/>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+    </svg>
+  );
+}
 function IconSettings() {
   return (
     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
@@ -137,8 +147,9 @@ function Layout() {
           <NavItem to="/products"   icon={<IconProducts />}   label={t("products")} />
           <NavItem to="/add"        icon={<IconAdd />}        label={t("addProduct")} />
           <NavItem to="/import"     icon={<IconImport />}     label={t("importByAsin")} />
-          <NavItem to="/blacklist"  icon={<IconBlacklist />}  label={t("blacklist")} />
-          <NavItem to="/settings"   icon={<IconSettings />}   label={t("settings")} />
+          <NavItem to="/blacklist"   icon={<IconBlacklist />}  label={t("blacklist")} />
+          <NavItem to="/recycle-bin" icon={<IconTrash />}      label="Recycle Bin" />
+          <NavItem to="/settings"    icon={<IconSettings />}   label={t("settings")} />
         </nav>
 
         {/* Logout */}

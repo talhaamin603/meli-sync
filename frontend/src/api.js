@@ -19,6 +19,47 @@ export async function addManualProduct(product) {
   return res.data;
 }
 
+export async function updateProduct(id, data) {
+  const res = await api.put(`/products/${id}`, data);
+  return res.data;
+}
+
+export async function syncProduct(id) {
+  const res = await api.post(`/meli/publish/${id}`);
+  return res.data;
+}
+
+export async function deleteProduct(id) {
+  const res = await api.delete(`/products/${id}`);
+  return res.data;
+}
+
+// ---- RECYCLE BIN ----
+export async function getRecycleBin() {
+  const res = await api.get("/recycle-bin");
+  return res.data;
+}
+
+export async function restoreProduct(id) {
+  const res = await api.post(`/recycle-bin/${id}/restore`);
+  return res.data;
+}
+
+export async function permanentDeleteProduct(id) {
+  const res = await api.delete(`/recycle-bin/${id}`);
+  return res.data;
+}
+
+export async function emptyRecycleBin() {
+  const res = await api.delete("/recycle-bin");
+  return res.data;
+}
+
+export async function restoreAllProducts() {
+  const res = await api.post("/recycle-bin/restore-all");
+  return res.data;
+}
+
 // ---- BLACKLIST ----
 export async function getBlacklist() {
   const res = await api.get("/blacklist");
@@ -32,6 +73,17 @@ export async function addBlacklistTerm(term) {
 
 export async function deleteBlacklistTerm(id) {
   const res = await api.delete(`/blacklist/${id}`);
+  return res.data;
+}
+
+export async function refetchImages() {
+  const res = await api.post("/amazon/refetch-images");
+  return res.data;
+}
+
+// ---- SYNC ----
+export async function getSyncHistory() {
+  const res = await api.get("/sync/history");
   return res.data;
 }
 

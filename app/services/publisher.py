@@ -10,6 +10,7 @@ Takes a Product row that is 'pending' in our DB and runs it through:
 
 This module is the bridge between Module 1 (data) and Mercado Libre.
 """
+import json
 from sqlmodel import Session, select
 from app.models import Product, AuditLog
 from app.services.pricing import price_product_for_meli
@@ -46,10 +47,11 @@ def publish_product(product_id: int, session: Session) -> dict:
         return {"status": "failed", "reason": "no category found"}
 
     # 3) publish to ML
+    all_images = json.loads(p.images) if p.images else []
     result = publish_listing(
         product={
             "title": p.title, "description": p.description,
-            "image_url": p.image_url, "stock": p.stock,
+            "image_url": p.image_url, "images": all_images, "stock": p.stock,
         },
         price_cop=pricing["final_cop"],
         category_id=category,

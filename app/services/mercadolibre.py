@@ -164,10 +164,18 @@ def publish_listing(
     `product` should contain at minimum: title, description, image_url, stock.
     Returns {ok: bool, ml_item_id: str|None, error: str|None}.
     """
-    # Mercado Libre requires HTTPS image URLs and at least one picture.
-    pictures = []
-    if product.get("image_url"):
-        pictures.append({"source": product["image_url"]})
+    # Build pictures list: use all_images if available, else fall back to image_url.
+    # ML accepts up to 12 pictures; all must be HTTPS.
+    all_images = product.get("images") or []
+    if not all_images and product.get("image_url"):
+        all_images = [product["image_url"]]
+    pictures = [
+        {"source": url}
+        for url in all_images[:12]
+        if url and url.startswith("https")
+    ]
+    if not pictures and product.get("image_url"):
+        pictures = [{"source": product["image_url"]}]
 
     body = {
         "title": product["title"][:60],   # ML title limit

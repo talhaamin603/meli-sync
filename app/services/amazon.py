@@ -91,8 +91,8 @@ def _normalize_rapidapi_response(asin: str, raw: dict) -> Optional[dict]:
     # ---- description (bullet points joined or fallback) ----
     description = _join_bullets(data)
 
-    # ---- image_url (extract from images[] array) ----
-    image_url = _extract_main_image(data)
+    # ---- image_url (main) + all images ----
+    image_url, all_images = _extract_images(data)
 
     # ---- price (string '$36.00' -> float 36.00) ----
     price = _parse_price(data.get("price") or data.get("product_price"))
@@ -105,36 +105,52 @@ def _normalize_rapidapi_response(asin: str, raw: dict) -> Optional[dict]:
         "title": title.strip()[:200],
         "description": description.strip()[:500],
         "image_url": image_url,
+        "images": all_images,          # full list, MAIN first
         "amazon_price_usd": price,
         "is_prime": is_prime,
         "stock": 10,
     }
 
 
-def _extract_main_image(data: dict) -> str:
-    """Find the best image URL from the images[] array."""
-    # Try the images[] array first (letscrape shape)
+def _extract_images(data: dict) -> tuple[str, list[str]]:
+    """
+    Returns (main_image_url, all_image_urls).
+    main_image_url is the MAIN variant (hi-res preferred), used for the thumbnail.
+    all_image_urls is every image in order: MAIN first, then the rest.
+    """
     images = data.get("images")
-    if isinstance(images, list) and images:
-        # Prefer the MAIN variant
-        for img in images:
-            if isinstance(img, dict) and img.get("variant") == "MAIN":
-                # Try hi_res first (highest quality), then image, then large
-                url = img.get("hi_res") or img.get("image") or img.get("large")
-                if url:
-                    return url
-        # Fallback: first image of any variant
-        first = images[0]
-        if isinstance(first, dict):
-            return first.get("hi_res") or first.get("image") or first.get("large") or ""
+    all_urls: list[str] = []
+    main_url = ""
 
-    # Other providers might use these flat keys
-    return (
-        data.get("product_photo")
-        or data.get("main_image")
-        or data.get("image")
-        or ""
-    )
+    if isinstance(images, list) and images:
+        main_candidates = []
+        other_candidates = []
+        for img in images:
+            if not isinstance(img, dict):
+                continue
+            url = img.get("hi_res") or img.get("image") or img.get("large") or ""
+            if not url:
+                continue
+            if img.get("variant") == "MAIN":
+                main_candidates.append(url)
+            else:
+                other_candidates.append(url)
+
+        # MAIN variant first, then the rest
+        all_urls = main_candidates + other_candidates
+        main_url = all_urls[0] if all_urls else ""
+
+    if not main_url:
+        main_url = (
+            data.get("product_photo")
+            or data.get("main_image")
+            or data.get("image")
+            or ""
+        )
+        if main_url and main_url not in all_urls:
+            all_urls.insert(0, main_url)
+
+    return main_url, all_urls
 
 
 def _join_bullets(data: dict) -> str:

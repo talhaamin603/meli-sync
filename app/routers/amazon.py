@@ -6,6 +6,7 @@ Now also rejects products that came back without a price, since saving
 those would lead to selling at cost or below.
 """
 import re
+import json
 import unicodedata
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -118,7 +119,7 @@ def import_asins(
         ).first()
         if existing:
             results.append({"asin": asin, "status": "skipped",
-                            "reason": "ya existe en el catálogo"})
+                            "reason": "Already exists in catalog"})
             summary["skipped"] += 1
             continue
 
@@ -151,6 +152,7 @@ def import_asins(
                 title=product_data["title"],
                 description=product_data["description"],
                 image_url=product_data["image_url"],
+                images=json.dumps(product_data.get("images") or []),
                 amazon_price_usd=usd_price,
                 converted_price_cop=0.0,
                 stock=product_data["stock"],
@@ -177,6 +179,7 @@ def import_asins(
             title=product_data["title"],
             description=product_data["description"],
             image_url=product_data["image_url"],
+            images=json.dumps(product_data.get("images") or []),
             amazon_price_usd=usd_price,
             converted_price_cop=cop_price,
             stock=product_data["stock"],
@@ -197,6 +200,59 @@ def import_asins(
         session.commit()
 
     return {"results": results, "summary": summary}
+
+
+@router.post("/refetch-images")
+def refetch_images(session: Session = Depends(get_session)):
+    """
+    Re-calls the Amazon API for every product that has only one image stored
+    and updates the images column with the full list. Adds a 1.2 s delay
+    between calls to stay within RapidAPI rate limits.
+    """
+    import time
+
+    if not is_configured():
+        raise HTTPException(status_code=400, detail="Amazon RapidAPI not configured.")
+
+    # Only process products that still have 0 or 1 image
+    products = session.exec(select(Product)).all()
+    needs_update = []
+    for p in products:
+        try:
+            existing = json.loads(p.images) if p.images else []
+        except Exception:
+            existing = []
+        if len(existing) <= 1:
+            needs_update.append(p)
+
+    updated = 0
+    skipped = len(products) - len(needs_update)
+    failed = 0
+
+    for i, p in enumerate(needs_update):
+        if i > 0:
+            time.sleep(1.2)   # stay under rate limit
+
+        product_data = fetch_product(p.asin)
+        if not product_data:
+            failed += 1
+            continue
+
+        all_images = product_data.get("images") or []
+        if len(all_images) <= 1:
+            failed += 1
+            continue
+
+        p.images = json.dumps(all_images)
+        p.image_url = all_images[0]
+        session.add(p)
+        updated += 1
+        # commit every 10 so progress is saved even if request times out
+        if updated % 10 == 0:
+            session.commit()
+
+    session.commit()
+    return {"updated": updated, "skipped": skipped, "failed": failed, "total": len(products)}
 
 
 _ASIN_RE = re.compile(r"/(?:dp|gp/product|product)/([A-Z0-9]{10})", re.I)

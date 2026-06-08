@@ -4,10 +4,11 @@ load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.database import init_db
+from app.database import init_db, migrate_db
 from app.routers import manual_products
 from app.routers import meli
 from app.routers import amazon as amazon_router
+from app.routers import sync as sync_router
 # from app.routers import auth as auth_router   # ← disabled locally (router not yet created)
 
 app = FastAPI(title="Meli Sync - Module 1 & 2")
@@ -19,6 +20,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",           # React dev server
+        "http://localhost:5174",           # React dev server (fallback port)
         "http://localhost:3000",           # Alternative dev port
         "https://*.railway.app",           # Railway frontend
         "https://*.netlify.app",           # Netlify frontend
@@ -36,6 +38,7 @@ app.add_middleware(
 app.include_router(manual_products.router)
 app.include_router(meli.router)
 app.include_router(amazon_router.router)
+app.include_router(sync_router.router)
 # app.include_router(auth_router.router)        # ← disabled locally
 
 # ============================================================
@@ -44,6 +47,7 @@ app.include_router(amazon_router.router)
 @app.on_event("startup")
 def on_startup():
     init_db()
+    migrate_db()
     print("Database tables ready.")
     print("Module 1 & 2 routers loaded.")
     # print("Auth router loaded.")
