@@ -23,7 +23,6 @@ app.add_middleware(
         "http://localhost:5174",           # React dev server (fallback port)
         "http://localhost:3000",           # Alternative dev port
         "https://*.railway.app",           # Railway frontend
-        "https://*.netlify.app",           # Netlify frontend
         "http://melizone.tech",            # Production domain
         "https://melizone.tech",           # Production domain HTTPS
     ],
