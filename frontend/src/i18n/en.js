@@ -89,4 +89,6 @@ export default {
     blockedShort: "blocked",
     skippedShort: "skipped",
     failedShort: "failed",
+    recentProducts: "Recent Products",
+    viewAll: "View All",
   };

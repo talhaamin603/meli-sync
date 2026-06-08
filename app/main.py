@@ -8,7 +8,7 @@ from app.database import init_db
 from app.routers import manual_products
 from app.routers import meli
 from app.routers import amazon as amazon_router
-from app.routers import auth as auth_router   # ← NEW for Phase A
+# from app.routers import auth as auth_router   # ← disabled locally (router not yet created)
 
 app = FastAPI(title="Meli Sync - Module 1 & 2")
 
@@ -36,7 +36,7 @@ app.add_middleware(
 app.include_router(manual_products.router)
 app.include_router(meli.router)
 app.include_router(amazon_router.router)
-app.include_router(auth_router.router)        # ← NEW for Phase A
+# app.include_router(auth_router.router)        # ← disabled locally
 
 # ============================================================
 # Startup event
@@ -44,9 +44,9 @@ app.include_router(auth_router.router)        # ← NEW for Phase A
 @app.on_event("startup")
 def on_startup():
     init_db()
-    print("✅ Database tables ready.")
-    print("✅ Module 1 & 2 routers loaded.")
-    print("✅ Auth router loaded.")
+    print("Database tables ready.")
+    print("Module 1 & 2 routers loaded.")
+    # print("Auth router loaded.")
 
 # ============================================================
 # Health endpoints

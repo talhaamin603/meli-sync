@@ -97,6 +97,6 @@ export default {
     blockedShort: "bloqueados",
     skippedShort: "omitidos",
     failedShort: "fallaron",
-
-
+    recentProducts: "Productos recientes",
+    viewAll: "Ver todos",
   };

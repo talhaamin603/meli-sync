@@ -125,6 +125,7 @@ function Products() {
                 style={{ background: "rgba(80,160,250,0.04)" }}
               >
                 <th className="text-left p-3 font-medium">{t("asin")}</th>
+                <th className="p-3 font-medium w-12"></th>
                 <th className="text-left p-3 font-medium">{t("title")}</th>
                 <th className="text-right p-3 font-medium w-36">{t("price")}</th>
                 <th className="text-right p-3 font-medium">{t("stock")}</th>
@@ -139,6 +140,11 @@ function Products() {
                   style={{ borderTop: "1px solid rgba(80,160,250,0.08)" }}
                 >
                   <td className="p-3 font-mono text-[11px] text-[#a0adbb]">{p.asin}</td>
+                  <td className="p-3">
+                    {p.image_url
+                      ? <img src={p.image_url} alt="" className="w-9 h-9 rounded object-cover" style={{ background: "#1f2937" }} />
+                      : <div className="w-9 h-9 rounded" style={{ background: "#1f2937" }} />}
+                  </td>
                   <td className="p-3 text-[#e8ecf2] max-w-md truncate">{p.title}</td>
                   <td className="p-3 text-right">
                     <PriceBlock usd={p.amazon_price_usd} cop={p.converted_price_cop} />

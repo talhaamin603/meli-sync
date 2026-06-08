@@ -158,6 +158,15 @@ from typing import List, Optional
 from app.database import get_session
 from app.models import Product, AuditLog, BlacklistRule, Setting
 from app.services.blacklist import BlacklistFilter
+from app.services.pricing import price_product_for_meli
+
+
+def _calc_cop(usd: float, session: Session) -> float:
+    try:
+        return float(price_product_for_meli(usd, session).get("final_cop", 0))
+    except Exception as e:
+        print(f"[manual] COP calc failed: {e}")
+        return 0.0
 
 router = APIRouter(prefix="/api", tags=["manual"])
 
@@ -216,11 +225,13 @@ def _add_one(data: ProductInput, session: Session,
 
     # blacklist check
     result = blacklist.check(title)
+    cop = _calc_cop(data.amazon_price_usd, session)
     if result["blocked"]:
         product = Product(
             asin=asin, title=title, description=data.description,
             image_url=data.image_url,
             amazon_price_usd=data.amazon_price_usd,
+            converted_price_cop=cop,
             stock=data.stock, is_prime=data.is_prime,
             status="blocked", block_reason=result["reason"],
         )
@@ -233,6 +244,7 @@ def _add_one(data: ProductInput, session: Session,
         asin=asin, title=title, description=data.description,
         image_url=data.image_url,
         amazon_price_usd=data.amazon_price_usd,
+        converted_price_cop=cop,
         stock=data.stock, is_prime=data.is_prime,
         status="pending",
     )
@@ -289,8 +301,24 @@ def add_products_bulk(items: List[ProductInput],
 @router.get("/products")
 def get_products(session: Session = Depends(get_session)):
     """Get all products"""
-    products = session.exec(select(Product)).all()
+    products = session.exec(select(Product).order_by(Product.created_at.desc())).all()
     return {"total": len(products), "products": products}
+
+
+@router.post("/admin/recalculate-prices")
+def recalculate_prices(session: Session = Depends(get_session)):
+    """Recalculate converted_price_cop for all products that have 0 or null COP price."""
+    products = session.exec(
+        select(Product).where(Product.amazon_price_usd > 0)
+    ).all()
+    updated = 0
+    for p in products:
+        if not p.converted_price_cop or p.converted_price_cop == 0:
+            p.converted_price_cop = _calc_cop(p.amazon_price_usd, session)
+            session.add(p)
+            updated += 1
+    session.commit()
+    return {"updated": updated, "total": len(products)}
 
 
 @router.get("/products/{asin}")

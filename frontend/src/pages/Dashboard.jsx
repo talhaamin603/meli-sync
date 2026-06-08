@@ -1,194 +1,861 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { getProducts } from "../api.js";
+import { Link } from "react-router-dom";
+import { getProducts, getExchangeRate } from "../api.js";
 
-// A single stat card. Number animates from 0 -> target on mount.
-function StatCard({ label, value, iconColor, iconBg, icon, delay }) {
+/* ─── Status badge ─────────────────────────────────────────── */
+function DashboardStatusBadge({ status, stock }) {
+  if (stock === 0) {
+    return (
+      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold border inline-flex items-center gap-1"
+        style={{ background: "rgba(239,68,68,0.12)", color: "#ef4444", borderColor: "rgba(239,68,68,0.25)" }}>
+        <span className="w-1.5 h-1.5 rounded-full inline-block bg-red-500" />
+        Out of Stock
+      </span>
+    );
+  }
+  const map = {
+    published: { bg: "rgba(34,197,94,0.12)",  fg: "#22c55e", border: "rgba(34,197,94,0.25)",  label: "Active" },
+    blocked:   { bg: "rgba(239,68,68,0.12)",  fg: "#ef4444", border: "rgba(239,68,68,0.25)",  label: "Blocked" },
+    failed:    { bg: "rgba(239,68,68,0.12)",  fg: "#ef4444", border: "rgba(239,68,68,0.25)",  label: "Blocked" },
+    pending:   { bg: "rgba(245,158,11,0.12)", fg: "#f59e0b", border: "rgba(245,158,11,0.25)", label: "Pending" },
+  };
+  const s = map[status] || map.pending;
+  return (
+    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold border inline-flex items-center gap-1"
+      style={{ background: s.bg, color: s.fg, borderColor: s.border }}>
+      <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: s.fg }} />
+      {s.label}
+    </span>
+  );
+}
+
+/* ─── Animated stat card ────────────────────────────────────── */
+function StatCard({ label, value, iconColor, iconBg, icon, subtext, accentColor, delay }) {
   const [display, setDisplay] = useState(0);
 
   useEffect(() => {
     if (value === 0) { setDisplay(0); return; }
     const start = Date.now();
-    const duration = 800;
+    const duration = 900;
     const id = setInterval(() => {
-      const t = Math.min(1, (Date.now() - start) / duration);
-      // ease-out so the count slows near the end
-      const eased = 1 - Math.pow(1 - t, 3);
+      const elapsed = Math.min(1, (Date.now() - start) / duration);
+      const eased = 1 - Math.pow(1 - elapsed, 3);
       setDisplay(Math.round(value * eased));
-      if (t >= 1) clearInterval(id);
+      if (elapsed >= 1) clearInterval(id);
     }, 16);
     return () => clearInterval(id);
   }, [value]);
 
   return (
     <div
-      className="card rounded-xl p-5 hover:-translate-y-0.5"
-      style={{ animation: `fadeUp 0.6s ease-out ${delay}s backwards` }}
+      className="relative rounded-xl overflow-hidden group transition-all duration-300 hover:-translate-y-1"
+      style={{
+        animation: `fadeUp 0.6s ease-out ${delay}s backwards`,
+        background: "linear-gradient(135deg, rgba(80,160,250,0.04) 0%, rgba(16,21,31,0.7) 100%)",
+        border: "1px solid rgba(80,160,250,0.12)",
+      }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = `${accentColor}55`; e.currentTarget.style.boxShadow = `0 8px 32px ${accentColor}18`; }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(80,160,250,0.12)"; e.currentTarget.style.boxShadow = "none"; }}
     >
-      <div className="flex items-center justify-between mb-3">
-        <div className="text-[11px] text-[#6b7785] uppercase tracking-wider">
-          {label}
+      {/* Top accent line */}
+      <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: `linear-gradient(90deg, transparent, ${accentColor}80, transparent)` }} />
+
+      {/* Hover glow */}
+      <div
+        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+        style={{ background: `radial-gradient(circle at 50% 130%, ${accentColor}18, transparent 70%)` }}
+      />
+
+      <div className="p-5 relative z-10">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <div className="text-[10px] text-[#6b7785] uppercase tracking-widest font-bold mb-0.5">
+              {label}
+            </div>
+            <div className="text-3xl font-black text-white tracking-tight" style={{ textShadow: `0 0 30px ${accentColor}30` }}>
+              {display.toLocaleString()}
+            </div>
+            {subtext && (
+              <div className="text-[11px] mt-1.5 font-medium" style={{ color: accentColor + "99" }}>
+                {subtext}
+              </div>
+            )}
+          </div>
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 flex-shrink-0"
+            style={{ background: iconBg, color: iconColor, boxShadow: `0 4px 12px ${accentColor}25` }}
+          >
+            {icon}
+          </div>
         </div>
-        <div
-          className="w-8 h-8 rounded-lg flex items-center justify-center"
-          style={{ background: iconBg, color: iconColor }}
-        >{icon}</div>
-      </div>
-      <div className="text-3xl font-medium text-white">
-        {display.toLocaleString()}
       </div>
     </div>
   );
 }
 
+/* ─── Mini donut ring ───────────────────────────────────────── */
+function DonutRing({ pctPublished, pctPending, pctBlocked, total }) {
+  const r = 36;
+  const circ = 2 * Math.PI * r;
+  const strokeWidth = 7;
+
+  // Safe guard against NaN
+  const safePublished = isFinite(pctPublished) ? pctPublished : 0;
+  const safePending   = isFinite(pctPending) ? pctPending : 0;
+  const safeBlocked   = isFinite(pctBlocked) ? pctBlocked : 0;
+
+  const pubDash  = (safePublished / 100) * circ;
+  const pendDash = (safePending   / 100) * circ;
+  const blkDash  = (safeBlocked   / 100) * circ;
+
+  const pubOffset  = 0;
+  const pendOffset = -(pubDash);
+  const blkOffset  = -(pubDash + pendDash);
+
+  return (
+    <div className="relative flex items-center justify-center" style={{ width: 96, height: 96 }}>
+      <svg width="96" height="96" viewBox="0 0 96 96" className="rotate-[-90deg]">
+        {/* Track */}
+        <circle cx="48" cy="48" r={r} fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth={strokeWidth} />
+        {/* Published */}
+        <circle
+          cx="48" cy="48" r={r} fill="none"
+          stroke="#22c55e" strokeWidth={strokeWidth}
+          strokeDasharray={`${pubDash} ${circ - pubDash}`}
+          strokeDashoffset={pubOffset}
+          strokeLinecap="butt"
+          style={{ transition: "stroke-dasharray 1s ease-out" }}
+        />
+        {/* Pending */}
+        <circle
+          cx="48" cy="48" r={r} fill="none"
+          stroke="#f59e0b" strokeWidth={strokeWidth}
+          strokeDasharray={`${pendDash} ${circ - pendDash}`}
+          strokeDashoffset={pendOffset}
+          strokeLinecap="butt"
+          style={{ transition: "stroke-dasharray 1s ease-out 0.1s" }}
+        />
+        {/* Blocked */}
+        <circle
+          cx="48" cy="48" r={r} fill="none"
+          stroke="#ef4444" strokeWidth={strokeWidth}
+          strokeDasharray={`${blkDash} ${circ - blkDash}`}
+          strokeDashoffset={blkOffset}
+          strokeLinecap="butt"
+          style={{ transition: "stroke-dasharray 1s ease-out 0.2s" }}
+        />
+      </svg>
+      {/* Center label */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <div className="text-lg font-black text-white leading-none">{total}</div>
+        <div className="text-[9px] text-[#6b7785] font-semibold uppercase tracking-wider mt-0.5">Total</div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Main Dashboard ────────────────────────────────────────── */
 function Dashboard() {
   const { t } = useTranslation();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [now, setNow] = useState(new Date());
+  const [page, setPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [exchangeRate, setExchangeRate] = useState(null);
+  const [sortCol, setSortCol] = useState(null);
+  const [sortDir, setSortDir] = useState("asc");
+  const PAGE_SIZE = 10;
 
-  // load products on mount
+  function handleSort(col) {
+    if (sortCol === col) {
+      setSortDir(d => d === "asc" ? "desc" : "asc");
+    } else {
+      setSortCol(col);
+      setSortDir("asc");
+    }
+    setPage(1);
+  }
+
+  // Update clock every minute
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Load products and exchange rate on mount
   useEffect(() => {
     getProducts()
-  .then((data) => {
-    // Handles 3 backend response shapes:
-    //   [...]                    -> plain list
-    //   {"items": [...]}         -> wrapped in 'items'
-    //   {"products": [...], ...} -> wrapped in 'products' (your backend)
-    const list = Array.isArray(data)
-      ? data
-      : (data.products || data.items || []);
-    setProducts(list);
-  })
+      .then((data) => {
+        const list = Array.isArray(data)
+          ? data
+          : (data.products || data.items || []);
+        setProducts(list);
+      })
       .catch(() => setError(t("errorLoading")))
       .finally(() => setLoading(false));
-    // we only want this on mount
+    getExchangeRate()
+      .then((data) => setExchangeRate(data.usd_to_cop))
+      .catch(() => {});
     // eslint-disable-next-line
   }, []);
 
   if (loading) {
     return (
-      <div className="text-[#a0adbb]">{t("loadingDashboard")}</div>
+      <div className="flex items-center gap-3 p-4 text-[#a0adbb]">
+        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+        </svg>
+        {t("loadingDashboard")}
+      </div>
     );
   }
   if (error) {
-    return <div className="text-red-400">{error}</div>;
+    return (
+      <div className="flex items-center gap-2 p-4 rounded-xl text-red-400" style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}>
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        {error}
+      </div>
+    );
   }
 
-  // calculate counts
-  const total = products.length;
+  // Compute stats
+  const total     = products.length;
   const published = products.filter((p) => p.status === "published").length;
   const blocked   = products.filter((p) => p.status === "blocked").length;
   const pending   = products.filter((p) => p.status === "pending").length;
-
-  // distribution bar segments (in percent, never divide by zero)
-  const safe = total || 1;
+  const safe      = total || 1;
   const pctPublished = (published / safe) * 100;
   const pctPending   = (pending   / safe) * 100;
   const pctBlocked   = (blocked   / safe) * 100;
 
+  const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const dateStr = now.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+
+  const filteredProducts = products.filter(p => {
+    if (statusFilter === "all") return true;
+    if (statusFilter === "out_of_stock") return p.stock === 0;
+    return p.status === statusFilter;
+  });
+
+  const statusOrder = { published: 0, pending: 1, blocked: 3 };
+  const getStatusOrder = (p) => p.stock === 0 ? 2 : (statusOrder[p.status] ?? 1);
+
+  const sortedProducts = sortCol ? [...filteredProducts].sort((a, b) => {
+    const rate = exchangeRate || 1;
+    let av, bv;
+    if (sortCol === "product")  { av = (a.title || "").toLowerCase(); bv = (b.title || "").toLowerCase(); }
+    else if (sortCol === "asin")  { av = (a.asin || "").toLowerCase();  bv = (b.asin || "").toLowerCase(); }
+    else if (sortCol === "amazon") { av = a.amazon_price_usd || 0;       bv = b.amazon_price_usd || 0; }
+    else if (sortCol === "ml")    { av = (a.converted_price_cop || 0) / rate; bv = (b.converted_price_cop || 0) / rate; }
+    else if (sortCol === "stock") { av = a.stock || 0;                   bv = b.stock || 0; }
+    else if (sortCol === "margin") {
+      const aml = (a.converted_price_cop || 0) / rate;
+      const bml = (b.converted_price_cop || 0) / rate;
+      av = aml - (a.amazon_price_usd || 0);
+      bv = bml - (b.amazon_price_usd || 0);
+    }
+    else if (sortCol === "status")  { av = getStatusOrder(a); bv = getStatusOrder(b); }
+    else if (sortCol === "updated") { av = a.updated_at || a.created_at || ""; bv = b.updated_at || b.created_at || ""; }
+    if (av < bv) return sortDir === "asc" ? -1 : 1;
+    if (av > bv) return sortDir === "asc" ? 1 : -1;
+    return 0;
+  }) : filteredProducts;
+
+  const totalPages = Math.max(1, Math.ceil(sortedProducts.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageProducts = sortedProducts.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  // Page numbers: up to 2 before and 2 after current, clamped to valid range
+  const pageNums = Array.from({ length: totalPages }, (_, i) => i + 1)
+    .filter(n => n >= safePage - 2 && n <= safePage + 2);
+
+  const filterTabs = [
+    { key: "all",          label: "All",          count: products.length },
+    { key: "pending",      label: "Pending",       count: products.filter(p => p.status === "pending").length },
+    { key: "published",    label: "Active",        count: products.filter(p => p.status === "published").length },
+    { key: "blocked",      label: "Blocked",       count: products.filter(p => p.status === "blocked").length },
+    { key: "out_of_stock", label: "Out of Stock",  count: products.filter(p => p.stock === 0).length },
+  ];
+
   return (
     <div>
-      {/* Heading */}
-      <div className="fade-up mb-7">
-        <h1 className="text-2xl font-medium text-white mb-1">
-          {t("dashboardTitle")}
-        </h1>
-        <p className="text-sm text-[#6b7785]">
-          {t("dashboardSubtitle")}
-        </p>
+      {/* ── Header ── */}
+      <div className="fade-up mb-8 flex items-start justify-between flex-wrap gap-4">
+        <div>
+          <div className="flex items-center gap-2.5 mb-1">
+            <h1 className="text-2xl font-black text-white tracking-tight">
+              {t("dashboardTitle")}
+            </h1>
+            <span
+              className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider"
+              style={{ background: "rgba(34,197,94,0.12)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.25)" }}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+              Live
+            </span>
+          </div>
+          <p className="text-sm text-[#6b7785]">{t("dashboardSubtitle")}</p>
+        </div>
+
+        {/* Clock widget */}
+        <div
+          className="flex items-center gap-3 px-4 py-2.5 rounded-xl"
+          style={{
+            background: "rgba(255,255,255,0.02)",
+            border: "1px solid rgba(80,160,250,0.1)",
+          }}
+        >
+          <svg className="w-4 h-4 text-[#50A0FA]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div>
+            <div className="text-white font-bold text-sm leading-none">{timeStr}</div>
+            <div className="text-[10px] text-[#6b7785] mt-0.5">{dateStr}</div>
+          </div>
+        </div>
       </div>
 
-      {/* Stat cards */}
+      {/* ── Stat Cards ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatCard
           label={t("totalProducts")}
           value={total}
-          iconBg="rgba(80,160,250,0.15)"
+          iconBg="rgba(80,160,250,0.1)"
           iconColor="#50A0FA"
-          icon="▣"
+          accentColor="#50A0FA"
+          icon={
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+            </svg>
+          }
+          subtext="Full catalog"
           delay={0.1}
         />
         <StatCard
           label={t("published")}
           value={published}
-          iconBg="rgba(34,197,94,0.15)"
+          iconBg="rgba(34,197,94,0.1)"
           iconColor="#22c55e"
-          icon="✓"
+          accentColor="#22c55e"
+          icon={
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          }
+          subtext={`${pctPublished.toFixed(1)}% of total`}
           delay={0.2}
         />
         <StatCard
           label={t("blocked")}
           value={blocked}
-          iconBg="rgba(239,68,68,0.15)"
+          iconBg="rgba(239,68,68,0.1)"
           iconColor="#ef4444"
-          icon="⊘"
+          accentColor="#ef4444"
+          icon={
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+            </svg>
+          }
+          subtext={`${pctBlocked.toFixed(1)}% of total`}
           delay={0.3}
         />
         <StatCard
           label={t("pending")}
           value={pending}
-          iconBg="rgba(245,158,11,0.15)"
+          iconBg="rgba(245,158,11,0.1)"
           iconColor="#f59e0b"
-          icon="⏱"
+          accentColor="#f59e0b"
+          icon={
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          }
+          subtext={`${pctPending.toFixed(1)}% of total`}
           delay={0.4}
         />
       </div>
 
-      {/* Distribution + exchange rate row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      {/* ── Distribution + Exchange Rate ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         {/* Distribution */}
         <div
-          className="card rounded-xl p-5 lg:col-span-2"
+          className="card rounded-xl p-5 lg:col-span-2 group hover:-translate-y-1 transition-all duration-300 relative overflow-hidden"
           style={{ animation: "fadeUp 0.6s ease-out 0.5s backwards" }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(80,160,250,0.3)"; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(80,160,250,0.15)"; }}
         >
-          <div className="text-sm font-medium text-white mb-3">
-            {t("distribution")}
-          </div>
-          <div
-            className="h-2 rounded overflow-hidden flex mb-3"
-            style={{ background: "rgba(80,160,250,0.08)" }}
-          >
-            <div style={{ width: `${pctPublished}%`, background: "#22c55e" }} />
-            <div style={{ width: `${pctPending}%`,   background: "#f59e0b" }} />
-            <div style={{ width: `${pctBlocked}%`,   background: "#ef4444" }} />
-          </div>
-          <div className="flex flex-wrap gap-5 text-xs text-[#a0adbb]">
-            <div className="flex items-center gap-1.5">
-              <span className="inline-block w-2 h-2 rounded-sm" style={{ background: "#22c55e" }} />
-              {t("published")} ({published})
+          {/* Hover glow */}
+          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+            style={{ background: "radial-gradient(circle at 50% 110%, rgba(80,160,250,0.07), transparent 70%)" }}
+          />
+
+          <div className="relative z-10 flex flex-col sm:flex-row gap-6">
+            {/* Left: donut + title */}
+            <div className="flex flex-col items-center gap-3 flex-shrink-0">
+              <div className="text-sm font-bold text-white self-start">{t("distribution")}</div>
+              <DonutRing
+                pctPublished={pctPublished}
+                pctPending={pctPending}
+                pctBlocked={pctBlocked}
+                total={total}
+              />
             </div>
-            <div className="flex items-center gap-1.5">
-              <span className="inline-block w-2 h-2 rounded-sm" style={{ background: "#f59e0b" }} />
-              {t("pending")} ({pending})
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="inline-block w-2 h-2 rounded-sm" style={{ background: "#ef4444" }} />
-              {t("blocked")} ({blocked})
+
+            {/* Right: legend + bar */}
+            <div className="flex-1 flex flex-col justify-between gap-4">
+              {/* Progress bar */}
+              <div>
+                <div className="h-2.5 rounded-full overflow-hidden flex gap-0.5 mb-4 mt-5"
+                  style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}
+                >
+                  {published > 0 && (
+                    <div className="h-full rounded-full"
+                      style={{ width: `${pctPublished}%`, background: "linear-gradient(90deg, #22c55e, #4ade80)", transition: "width 1s ease-out" }} />
+                  )}
+                  {pending > 0 && (
+                    <div className="h-full rounded-full"
+                      style={{ width: `${pctPending}%`, background: "linear-gradient(90deg, #f59e0b, #fbbf24)", transition: "width 1s ease-out 0.1s" }} />
+                  )}
+                  {blocked > 0 && (
+                    <div className="h-full rounded-full"
+                      style={{ width: `${pctBlocked}%`, background: "linear-gradient(90deg, #ef4444, #f87171)", transition: "width 1s ease-out 0.2s" }} />
+                  )}
+                </div>
+
+                {/* Legend rows */}
+                <div className="space-y-2.5">
+                  {[
+                    { label: t("published"), count: published, pct: pctPublished, color: "#22c55e", bg: "rgba(34,197,94,0.1)" },
+                    { label: t("pending"),   count: pending,   pct: pctPending,   color: "#f59e0b", bg: "rgba(245,158,11,0.1)" },
+                    { label: t("blocked"),   count: blocked,   pct: pctBlocked,   color: "#ef4444", bg: "rgba(239,68,68,0.1)"  },
+                  ].map(({ label, count, pct, color, bg }) => (
+                    <div key={label} className="flex items-center gap-3">
+                      <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: color, boxShadow: `0 0 6px ${color}80` }} />
+                      <div className="flex-1 text-xs text-[#a0adbb]">{label}</div>
+                      <div className="text-xs font-bold text-white">{count}</div>
+                      <div
+                        className="text-[10px] font-semibold px-1.5 py-0.5 rounded"
+                        style={{ background: bg, color }}
+                      >
+                        {pct.toFixed(1)}%
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Exchange rate card */}
         <div
-          className="card rounded-xl p-5"
+          className="card rounded-xl p-5 group hover:-translate-y-1 transition-all duration-300 relative overflow-hidden flex flex-col"
           style={{ animation: "fadeUp 0.6s ease-out 0.6s backwards" }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(80,160,250,0.35)"; e.currentTarget.style.boxShadow = "0 8px 32px rgba(80,160,250,0.12)"; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(80,160,250,0.15)"; e.currentTarget.style.boxShadow = "none"; }}
         >
-          <div className="text-sm font-medium text-white mb-1">
-            {t("exchangeRate")}
+          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+            style={{ background: "radial-gradient(circle at 50% 120%, rgba(80,160,250,0.12), transparent 70%)" }}
+          />
+
+          <div className="relative z-10 flex-1">
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <div className="text-sm font-bold text-white mb-0.5">{t("exchangeRate")}</div>
+                <div className="text-[10px] text-[#6b7785] font-semibold tracking-widest uppercase">USD → COP</div>
+              </div>
+              <span className="flex items-center gap-1.5 text-[10px] font-bold text-green-400"
+                style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", padding: "2px 8px", borderRadius: "999px" }}
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                Live
+              </span>
+            </div>
+
+            <div className="mb-1">
+              <div className="text-[11px] text-[#6b7785] mb-1">Current rate</div>
+              <div className="text-4xl font-black tracking-tight"
+                style={{ color: "#50A0FA", textShadow: "0 0 30px rgba(80,160,250,0.4)" }}
+              >
+                {exchangeRate ? exchangeRate.toLocaleString("en-US", { maximumFractionDigits: 0 }) : "—"}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 mt-1">
+              <span className="text-[11px] text-[#6b7785]">{t("updatedToday")}</span>
+            </div>
           </div>
-          <div className="text-[11px] text-[#6b7785] mb-1.5">USD → COP</div>
-          <div
-            className="text-3xl font-medium"
-            style={{
-              color: "#50A0FA",
-              textShadow: "0 0 22px rgba(80,160,250,0.45)",
-            }}
-          >4,100</div>
-          <div className="text-[11px] text-green-400 mt-1">
-            ↑ {t("updatedToday")}
+
+          {/* Sparkline */}
+          <div className="h-14 -mx-5 -mb-5 mt-3 overflow-hidden opacity-50 group-hover:opacity-80 transition-opacity duration-300 relative z-10">
+            <svg className="w-full h-full" viewBox="0 0 100 35" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="spark-fill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#50A0FA" stopOpacity="0.35"/>
+                  <stop offset="100%" stopColor="#50A0FA" stopOpacity="0"/>
+                </linearGradient>
+              </defs>
+              <path d="M0 28 C8 26, 15 30, 22 22 C30 14, 38 20, 46 15 C54 10, 62 18, 70 12 C78 6, 86 16, 94 10 L100 7 L100 35 L0 35 Z"
+                fill="url(#spark-fill)" />
+              <path d="M0 28 C8 26, 15 30, 22 22 C30 14, 38 20, 46 15 C54 10, 62 18, 70 12 C78 6, 86 16, 94 10 L100 7"
+                fill="none" stroke="#50A0FA" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
           </div>
         </div>
+      </div>
+
+      {/* ── Recent Products ── */}
+      <div
+        className="card rounded-xl overflow-hidden"
+        style={{ animation: "fadeUp 0.6s ease-out 0.7s backwards" }}
+      >
+        {/* Table header bar */}
+        <div className="flex items-center justify-between px-5 py-4"
+          style={{ borderBottom: "1px solid rgba(80,160,250,0.08)" }}
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+              style={{ background: "rgba(80,160,250,0.1)", color: "#50A0FA" }}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+            </div>
+            <div>
+              <div className="text-sm font-bold text-white">{t("recentProducts")}</div>
+              <div className="text-[10px] text-[#6b7785]">{PAGE_SIZE} items per page</div>
+            </div>
+          </div>
+          <Link
+            to="/products"
+            className="text-xs font-bold text-[#50A0FA] flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all duration-200 hover:-translate-x-0.5"
+            style={{ background: "rgba(80,160,250,0.08)", border: "1px solid rgba(80,160,250,0.15)" }}
+            onMouseEnter={e => { e.currentTarget.style.background = "rgba(80,160,250,0.15)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "rgba(80,160,250,0.08)"; }}
+          >
+            {t("viewAll")}
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </Link>
+        </div>
+
+        {/* Filter tabs */}
+        <div className="flex items-center gap-1.5 px-5 py-3 flex-wrap"
+          style={{ borderBottom: "1px solid rgba(80,160,250,0.08)" }}
+        >
+          {filterTabs.map(tab => {
+            const active = statusFilter === tab.key;
+            const accent = tab.key === "pending" ? "#f59e0b"
+              : tab.key === "published" ? "#22c55e"
+              : tab.key === "blocked" ? "#ef4444"
+              : tab.key === "out_of_stock" ? "#a78bfa"
+              : "#50A0FA";
+            return (
+              <button
+                key={tab.key}
+                onClick={() => { setStatusFilter(tab.key); setPage(1); }}
+                className="flex items-center gap-1.5 h-7 px-3 rounded-lg text-[11px] font-bold transition-all duration-150"
+                style={active ? {
+                  background: accent,
+                  color: "#0d1117",
+                  border: `1px solid ${accent}`,
+                  boxShadow: `0 0 10px ${accent}50`,
+                } : {
+                  background: "rgba(255,255,255,0.03)",
+                  color: "#6b7785",
+                  border: "1px solid rgba(255,255,255,0.06)",
+                  cursor: "pointer",
+                }}
+              >
+                {tab.label}
+                <span
+                  className="text-[10px] font-bold px-1.5 py-0.5 rounded"
+                  style={active
+                    ? { background: "rgba(0,0,0,0.2)", color: "#0d1117" }
+                    : { background: "rgba(255,255,255,0.06)", color: "#4a5568" }
+                  }
+                >
+                  {tab.count}
+                </span>
+              </button>
+            );
+          })}
+
+          {/* Sort by latest update — pushed to the right */}
+          <button
+            onClick={() => { setSortCol("updated"); setSortDir("desc"); setPage(1); }}
+            className="ml-auto flex items-center gap-1.5 h-7 px-3 rounded-lg text-[11px] font-bold transition-all duration-150"
+            style={sortCol === "updated" ? {
+              background: "rgba(80,160,250,0.15)",
+              color: "#50A0FA",
+              border: "1px solid rgba(80,160,250,0.4)",
+              boxShadow: "0 0 10px rgba(80,160,250,0.2)",
+            } : {
+              background: "rgba(255,255,255,0.03)",
+              color: "#6b7785",
+              border: "1px solid rgba(255,255,255,0.06)",
+              cursor: "pointer",
+            }}
+          >
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Sort by Latest Update
+          </button>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-[#4a5568] text-[10px] uppercase tracking-widest font-bold"
+                style={{ background: "rgba(255,255,255,0.015)" }}
+              >
+                {[
+                  { col: "product", label: "Product",      align: "left" },
+                  { col: "asin",    label: "ASIN",         align: "left" },
+                  { col: "amazon",  label: "Amazon Price", align: "right" },
+                  { col: "ml",      label: "ML Price",     align: "right" },
+                  { col: "margin",  label: "Margin",       align: "right" },
+                  { col: "stock",   label: "Stock",        align: "right" },
+                  { col: "status",  label: "Status",       align: "center" },
+                ].map(({ col, label, align }) => (
+                  <th key={col} className={`px-4 py-3 text-${align}`}>
+                    <button
+                      onClick={() => handleSort(col)}
+                      className="inline-flex items-center gap-1 hover:text-white transition-colors duration-150"
+                      style={{ color: sortCol === col ? "#50A0FA" : undefined }}
+                    >
+                      {label}
+                      <span className="flex flex-col leading-none" style={{ fontSize: 8 }}>
+                        <span style={{ opacity: sortCol === col && sortDir === "asc" ? 1 : 0.3 }}>▲</span>
+                        <span style={{ opacity: sortCol === col && sortDir === "desc" ? 1 : 0.3 }}>▼</span>
+                      </span>
+                    </button>
+                  </th>
+                ))}
+                <th className="text-center px-4 py-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pageProducts.map((p) => {
+                const amazonUsd = Number(p.amazon_price_usd || 0);
+                const mlUsd = exchangeRate && p.converted_price_cop
+                  ? p.converted_price_cop / exchangeRate
+                  : null;
+                const margin = mlUsd !== null ? mlUsd - amazonUsd : null;
+                const marginPct = margin !== null && mlUsd > 0
+                  ? (margin / mlUsd) * 100
+                  : null;
+
+                return (
+                  <tr
+                    key={p.id || p.asin}
+                    className="transition-colors duration-150"
+                    style={{ borderTop: "1px solid rgba(255,255,255,0.035)" }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(80,160,250,0.025)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+                  >
+                    {/* Product */}
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center"
+                          style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
+                        >
+                          {p.image_url ? (
+                            <img src={p.image_url} alt="" className="w-full h-full object-cover"
+                              onError={e => { e.target.style.display = "none"; }} />
+                          ) : (
+                            <svg className="w-4 h-4 text-[#4a5568]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          )}
+                        </div>
+                        <span className="text-[#c8d0db] font-medium text-[12px] max-w-[180px] truncate">{p.title}</span>
+                      </div>
+                    </td>
+
+                    {/* ASIN */}
+                    <td className="px-4 py-3">
+                      <code className="text-[11px] font-bold px-2 py-1 rounded"
+                        style={{ background: "rgba(80,160,250,0.08)", color: "#50A0FA" }}>
+                        {p.asin}
+                      </code>
+                    </td>
+
+                    {/* Amazon Price */}
+                    <td className="px-4 py-3 text-right">
+                      <span className="text-[#c8d0db] font-bold text-[13px]">
+                        ${amazonUsd.toFixed(2)}
+                      </span>
+                    </td>
+
+                    {/* ML Price (in USD) */}
+                    <td className="px-4 py-3 text-right">
+                      <span className="font-bold text-[13px]" style={{ color: "#50A0FA" }}>
+                        {mlUsd !== null ? `$${mlUsd.toFixed(2)}` : "—"}
+                      </span>
+                    </td>
+
+                    {/* Margin */}
+                    <td className="px-4 py-3 text-right">
+                      {margin !== null ? (
+                        <div className="leading-tight">
+                          <div className="text-[13px] font-bold text-green-400">
+                            +${margin.toFixed(2)}
+                          </div>
+                          <div className="text-[10px] text-[#6b7785]">
+                            {marginPct.toFixed(1)}%
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-[#4a5568]">—</span>
+                      )}
+                    </td>
+
+                    {/* Stock */}
+                    <td className="px-4 py-3 text-right">
+                      <span className={`font-bold text-sm ${p.stock === 0 ? "text-red-400" : "text-[#c8d0db]"}`}>
+                        {p.stock}
+                      </span>
+                    </td>
+
+                    {/* Status */}
+                    <td className="px-4 py-3 text-center">
+                      <DashboardStatusBadge status={p.status} stock={p.stock} />
+                    </td>
+
+                    {/* Actions */}
+                    <td className="px-4 py-3 text-center">
+                      <span className="text-[#4a5568] text-[11px]">—</span>
+                    </td>
+                  </tr>
+                );
+              })}
+              {filteredProducts.length === 0 && (
+                <tr>
+                  <td colSpan="8" className="py-12 text-center text-[#4a5568]">
+                    <div className="flex flex-col items-center gap-2">
+                      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                      </svg>
+                      <span className="text-sm">{t("noProducts")}</span>
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination footer */}
+        {products.length > 0 && (
+          <div className="px-5 py-3 flex items-center justify-between"
+            style={{ borderTop: "1px solid rgba(255,255,255,0.035)" }}
+          >
+            <span className="text-[11px] text-[#4a5568]">
+              Showing{" "}
+              <span className="text-[#6b7785] font-bold">
+                {sortedProducts.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, sortedProducts.length)}
+              </span>{" "}
+              of <span className="text-[#6b7785] font-bold">{sortedProducts.length}</span> products
+            </span>
+
+            <div className="flex items-center gap-1">
+              {/* First button */}
+              <button
+                onClick={() => setPage(1)}
+                disabled={safePage === 1}
+                className="h-7 px-2 rounded-lg text-[11px] font-bold transition-all duration-150"
+                style={{
+                  background: safePage === 1 ? "rgba(255,255,255,0.02)" : "rgba(80,160,250,0.08)",
+                  color: safePage === 1 ? "#3a4350" : "#50A0FA",
+                  border: "1px solid " + (safePage === 1 ? "rgba(255,255,255,0.04)" : "rgba(80,160,250,0.2)"),
+                  cursor: safePage === 1 ? "not-allowed" : "pointer",
+                }}
+              >
+                First
+              </button>
+
+              {/* Prev arrow */}
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={safePage === 1}
+                className="w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-150"
+                style={{
+                  background: safePage === 1 ? "rgba(255,255,255,0.02)" : "rgba(80,160,250,0.08)",
+                  color: safePage === 1 ? "#3a4350" : "#50A0FA",
+                  border: "1px solid " + (safePage === 1 ? "rgba(255,255,255,0.04)" : "rgba(80,160,250,0.2)"),
+                  cursor: safePage === 1 ? "not-allowed" : "pointer",
+                }}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+
+              {/* Page numbers */}
+              {pageNums.map(n => (
+                <button
+                  key={n}
+                  onClick={() => setPage(n)}
+                  className="w-7 h-7 rounded-lg text-[11px] font-bold transition-all duration-150"
+                  style={n === safePage ? {
+                    background: "#50A0FA",
+                    color: "#0d1117",
+                    border: "1px solid #50A0FA",
+                    boxShadow: "0 0 10px rgba(80,160,250,0.4)",
+                  } : {
+                    background: "rgba(80,160,250,0.06)",
+                    color: "#6b7785",
+                    border: "1px solid rgba(80,160,250,0.12)",
+                    cursor: "pointer",
+                  }}
+                >
+                  {n}
+                </button>
+              ))}
+
+              {/* Next arrow */}
+              <button
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={safePage === totalPages}
+                className="w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-150"
+                style={{
+                  background: safePage === totalPages ? "rgba(255,255,255,0.02)" : "rgba(80,160,250,0.08)",
+                  color: safePage === totalPages ? "#3a4350" : "#50A0FA",
+                  border: "1px solid " + (safePage === totalPages ? "rgba(255,255,255,0.04)" : "rgba(80,160,250,0.2)"),
+                  cursor: safePage === totalPages ? "not-allowed" : "pointer",
+                }}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+
+              {/* Last button */}
+              <button
+                onClick={() => setPage(totalPages)}
+                disabled={safePage === totalPages}
+                className="h-7 px-2 rounded-lg text-[11px] font-bold transition-all duration-150"
+                style={{
+                  background: safePage === totalPages ? "rgba(255,255,255,0.02)" : "rgba(80,160,250,0.08)",
+                  color: safePage === totalPages ? "#3a4350" : "#50A0FA",
+                  border: "1px solid " + (safePage === totalPages ? "rgba(255,255,255,0.04)" : "rgba(80,160,250,0.2)"),
+                  cursor: safePage === totalPages ? "not-allowed" : "pointer",
+                }}
+              >
+                Last
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

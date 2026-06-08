@@ -35,6 +35,12 @@ export async function deleteBlacklistTerm(id) {
   return res.data;
 }
 
+// ---- EXCHANGE RATE ----
+export async function getExchangeRate() {
+  const res = await api.get("/meli/exchange-rate");
+  return res.data;
+}
+
 // ---- SETTINGS ----
 export async function getSettings() {
   const res = await api.get("/settings");
