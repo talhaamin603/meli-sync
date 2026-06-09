@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { getCategories, createCategory, updateCategory, deleteCategory } from "../api.js";
+import { getCategories, createCategory, updateCategory, deleteCategory, getProducts } from "../api.js";
 
 function SearchableSelect({ options, value, onChange, placeholder = "Search…" }) {
   const [open, setOpen] = useState(false);
@@ -156,10 +156,23 @@ function getVisibleNodes(nodes, expandedIds) {
   return result;
 }
 
-function TreeNode({ node, flat, onDelete, onEdit, depth = 0, expandedIds, onToggle, focusedId, onFocus }) {
+function CountBadge({ count }) {
+  if (!count) return null;
+  return (
+    <span className="text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0"
+      style={{ background: "rgba(80,160,250,0.12)", color: "#6b9fd4", border: "1px solid rgba(80,160,250,0.18)", lineHeight: 1.4 }}>
+      {count}
+    </span>
+  );
+}
+
+function TreeNode({ node, flat, onDelete, onEdit, depth = 0, expandedIds, onToggle, focusedId, onFocus, productCounts }) {
   const expanded = expandedIds.has(node.id);
   const hasChildren = node.children?.length > 0;
   const isFocused = focusedId === node.id;
+  const nodeCount = hasChildren
+    ? node.children.reduce((sum, c) => sum + (productCounts[c.id] || 0), 0)
+    : (productCounts[node.id] || 0);
   const [editing, setEditing] = useState(false);
   const [editVal, setEditVal] = useState(node.name);
   const [saving, setSaving] = useState(false);
@@ -185,10 +198,10 @@ function TreeNode({ node, flat, onDelete, onEdit, depth = 0, expandedIds, onTogg
     <div>
       <div
         data-node-id={node.id}
-        className="flex items-center gap-2 group py-1.5 px-2 rounded-lg transition-colors"
+        className="flex items-center gap-2 group py-1.5 px-2 rounded-lg transition-colors hover:bg-white/[0.06]"
         style={{
           paddingLeft: depth * 20 + 8,
-          background: isFocused ? "rgba(80,160,250,0.12)" : undefined,
+          background: isFocused ? "rgba(80,160,250,0.15)" : undefined,
           outline: isFocused ? "1px solid rgba(80,160,250,0.3)" : undefined,
           cursor: "default",
         }}
@@ -223,18 +236,19 @@ function TreeNode({ node, flat, onDelete, onEdit, depth = 0, expandedIds, onTogg
               value={editVal}
               onChange={e => setEditVal(e.target.value)}
               onKeyDown={e => { if (e.key === "Enter") commitEdit(); if (e.key === "Escape") setEditing(false); }}
+              onBlur={() => { if (!saving) setEditing(false); }}
               className="flex-1 rounded px-2 py-0.5 text-sm text-[#e8ecf2] outline-none min-w-0"
               style={{ background: "rgba(80,160,250,0.1)", border: "1px solid rgba(80,160,250,0.4)" }}
               disabled={saving}
             />
-            <button onClick={commitEdit} disabled={saving} tabIndex={-1}
+            <button onMouseDown={e => e.preventDefault()} onClick={commitEdit} disabled={saving} tabIndex={-1}
               className="w-5 h-5 rounded flex items-center justify-center flex-shrink-0 hover:bg-green-500/20"
               style={{ color: "#22c55e" }} title="Save">
               <svg width="10" height="10" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
             </button>
-            <button onClick={() => setEditing(false)} disabled={saving} tabIndex={-1}
+            <button onMouseDown={e => e.preventDefault()} onClick={() => setEditing(false)} disabled={saving} tabIndex={-1}
               className="w-5 h-5 rounded flex items-center justify-center flex-shrink-0 hover:bg-red-500/20"
               style={{ color: "#6b7785" }} title="Cancel">
               <svg width="10" height="10" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3">
@@ -243,21 +257,18 @@ function TreeNode({ node, flat, onDelete, onEdit, depth = 0, expandedIds, onTogg
             </button>
           </div>
         ) : (
-          <span
-            className={`flex-1 text-sm${hasChildren ? " cursor-pointer select-none hover:text-white" : ""}`}
-            style={{ color: isFocused ? "#e8ecf2" : depth === 0 ? "#e8ecf2" : "#a0adbb" }}
+          <div
+            className={`flex-1 flex items-center gap-1.5 min-w-0${hasChildren ? " cursor-pointer" : ""}`}
             onClick={hasChildren ? e => { e.stopPropagation(); onFocus(node.id); onToggle(node.id); } : undefined}
           >
-            {node.name}
-          </span>
-        )}
-
-        {/* Full path badge on hover */}
-        {!editing && depth > 0 && (
-          <span className="hidden group-hover:inline-flex text-[9px] px-1.5 py-0.5 rounded mr-1 truncate max-w-[200px]"
-            style={{ background: "rgba(80,160,250,0.08)", color: "#4a5568" }}>
-            {getPath(node.id, flat)}
-          </span>
+            <span
+              className={`text-sm truncate${hasChildren ? " select-none hover:text-white" : ""}`}
+              style={{ color: isFocused ? "#e8ecf2" : depth === 0 ? "#e8ecf2" : "#a0adbb" }}
+            >
+              {node.name}
+            </span>
+            <CountBadge count={nodeCount} />
+          </div>
         )}
 
         {/* Edit */}
@@ -298,7 +309,7 @@ function TreeNode({ node, flat, onDelete, onEdit, depth = 0, expandedIds, onTogg
         <div style={{ borderLeft: "1px solid rgba(80,160,250,0.08)", marginLeft: depth * 20 + 18 }}>
           {node.children.map(child => (
             <TreeNode key={child.id} node={child} flat={flat} onDelete={onDelete} onEdit={onEdit} depth={depth + 1}
-              expandedIds={expandedIds} onToggle={onToggle} focusedId={focusedId} onFocus={onFocus} />
+              expandedIds={expandedIds} onToggle={onToggle} focusedId={focusedId} onFocus={onFocus} productCounts={productCounts} />
           ))}
         </div>
       )}
@@ -322,6 +333,7 @@ export default function Categories() {
   const [expandedIds, setExpandedIds] = useState(new Set());
   const [focusedId, setFocusedId] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [productCounts, setProductCounts] = useState({});
   const treeRef = useRef(null);
 
   function showToast(msg, ok = true) {
@@ -331,8 +343,14 @@ export default function Categories() {
 
   async function load() {
     try {
-      const data = await getCategories();
-      setFlat(data);
+      const [cats, prods] = await Promise.all([getCategories(), getProducts()]);
+      setFlat(cats);
+      const list = Array.isArray(prods) ? prods : (prods.products || []);
+      const counts = {};
+      list.forEach(p => {
+        if (p.category_id) counts[p.category_id] = (counts[p.category_id] || 0) + 1;
+      });
+      setProductCounts(counts);
     } catch {
       showToast("Failed to load categories.", false);
     } finally {
@@ -591,7 +609,15 @@ export default function Categories() {
                         }
                       </svg>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm" style={{ color: isMain ? "#e8ecf2" : "#a0adbb" }}>{highlighted}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-sm" style={{ color: isMain ? "#e8ecf2" : "#a0adbb" }}>{highlighted}</p>
+                          {(() => {
+                            const cnt = isMain
+                              ? flat.filter(x => x.parent_id === c.id).reduce((s, x) => s + (productCounts[x.id] || 0), 0)
+                              : (productCounts[c.id] || 0);
+                            return <CountBadge count={cnt} />;
+                          })()}
+                        </div>
                         {!isMain && (
                           <p className="text-[11px] truncate mt-0.5" style={{ color: "#a0adbb" }}>
                             <span style={{ color: "#50A0FA", opacity: 0.7 }}>↳ </span>{getPath(c.id, flat)}
@@ -634,7 +660,7 @@ export default function Categories() {
               tree.map(node => (
                 <TreeNode key={node.id} node={node} flat={flat} onDelete={setConfirmDelete} onEdit={handleEdit}
                   expandedIds={expandedIds} onToggle={toggleExpand}
-                  focusedId={focusedId} onFocus={setFocusedId} />
+                  focusedId={focusedId} onFocus={setFocusedId} productCounts={productCounts} />
               ))
             )}
           </div>

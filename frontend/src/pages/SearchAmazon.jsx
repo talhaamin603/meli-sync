@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { searchAmazon, addFromSearch } from "../api.js";
+import { searchAmazon, addFromSearch, getCategories } from "../api.js";
 
 // ── Star rating display ───────────────────────────────────────────────────────
 function Stars({ rating }) {
@@ -122,6 +122,14 @@ function ProductCard({ product, selected, onToggle, addedStatus }) {
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
+const selStyle = {
+  background: "rgba(255,255,255,0.04)",
+  border: "1px solid rgba(80,160,250,0.18)",
+  color: "#e8ecf2",
+  cursor: "pointer",
+  appearance: "none",
+};
+
 export default function SearchAmazon() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
@@ -132,6 +140,11 @@ export default function SearchAmazon() {
   const [adding, setAdding] = useState(false);
   const [addResults, setAddResults] = useState(null);
   const [addedMap, setAddedMap] = useState({});
+  const [categories, setCategories] = useState([]);
+  const [mainId, setMainId] = useState("");
+  const [subId, setSubId]   = useState("");
+
+  useEffect(() => { getCategories().then(setCategories).catch(() => {}); }, []);
 
   async function handleSearch(e) {
     e?.preventDefault();
@@ -182,9 +195,10 @@ export default function SearchAmazon() {
         is_prime: r.is_prime,
       }));
 
+    const categoryId = subId ? parseInt(subId) : mainId ? parseInt(mainId) : undefined;
     setAdding(true);
     try {
-      const data = await addFromSearch(toAdd);
+      const data = await addFromSearch(toAdd, categoryId);
       setAddResults(data.summary);
       const map = {};
       for (const r of data.results) map[r.asin] = r.status;
@@ -252,6 +266,37 @@ export default function SearchAmazon() {
           {searchError}
         </div>
       )}
+
+      {/* Category picker */}
+      {(() => {
+        const mains = categories.filter(c => !c.parent_id).sort((a, b) => a.name.localeCompare(b.name));
+        const subs  = mainId
+          ? categories.filter(c => String(c.parent_id) === String(mainId)).sort((a, b) => a.name.localeCompare(b.name))
+          : [];
+        return (
+          <div className="grid grid-cols-2 gap-3 mb-6 p-4 rounded-xl"
+            style={{ background: "rgba(80,160,250,0.03)", border: "1px solid rgba(80,160,250,0.1)" }}>
+            <div>
+              <label className="block text-[11px] text-[#6b7785] uppercase tracking-wider mb-1.5">Main Category</label>
+              <select value={mainId} onChange={e => { setMainId(e.target.value); setSubId(""); }}
+                className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                style={selStyle}>
+                <option value="" disabled style={{ background: "#0f1623", color: "#4a5568" }}>Select main category</option>
+                {mains.map(c => <option key={c.id} value={c.id} style={{ background: "#0f1623" }}>{c.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[11px] text-[#6b7785] uppercase tracking-wider mb-1.5">Subcategory</label>
+              <select value={subId} onChange={e => setSubId(e.target.value)} disabled={!mainId}
+                className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                style={{ ...selStyle, opacity: mainId ? 1 : 0.4, cursor: mainId ? "pointer" : "not-allowed" }}>
+                <option value="" disabled style={{ background: "#0f1623", color: "#4a5568" }}>Select subcategory</option>
+                {subs.map(c => <option key={c.id} value={c.id} style={{ background: "#0f1623" }}>{c.name}</option>)}
+              </select>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Add results summary */}
       {addResults && (

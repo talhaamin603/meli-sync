@@ -28,6 +28,7 @@ router = APIRouter(prefix="/api/amazon", tags=["amazon"])
 
 class ImportBody(BaseModel):
     asins: list[str]
+    category_id: int | None = None
 
 
 class SearchProductItem(BaseModel):
@@ -40,6 +41,7 @@ class SearchProductItem(BaseModel):
 
 class AddFromSearchBody(BaseModel):
     products: list[SearchProductItem]
+    category_id: int | None = None
 
 
 def _normalize_text(text: str) -> str:
@@ -170,6 +172,7 @@ def import_asins(
                 stock=product_data["stock"],
                 is_prime=product_data["is_prime"],
                 amazon_category=product_data.get("amazon_category") or "",
+                category_id=body.category_id,
                 status="blocked",
                 block_reason=f"matched: {hit}",
             ))
@@ -198,6 +201,7 @@ def import_asins(
             stock=product_data["stock"],
             is_prime=product_data["is_prime"],
             amazon_category=product_data.get("amazon_category") or "",
+            category_id=body.category_id,
             status="pending",
         ))
         session.add(AuditLog(
@@ -261,6 +265,7 @@ def add_from_search(
                 converted_price_cop=0.0,
                 stock=10,
                 is_prime=item.is_prime,
+                category_id=body.category_id,
                 status="blocked",
                 block_reason=f"matched: {hit}",
             ))
@@ -282,6 +287,7 @@ def add_from_search(
             converted_price_cop=cop_price,
             stock=10,
             is_prime=item.is_prime,
+            category_id=body.category_id,
             status="pending",
         ))
         session.add(AuditLog(action="search_import_added", asin=asin, detail=f"price=${usd_price} -> {cop_price} COP"))

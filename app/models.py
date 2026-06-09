@@ -19,6 +19,7 @@ class Product(SQLModel, table=True):
     times_ordered: int = 0
     is_prime: bool = False
     amazon_category: Optional[str] = None  # full category path from Amazon
+    category_id: Optional[int] = Field(default=None, foreign_key="category.id")
     meli_item_id: Optional[str] = None  # filled in Module 2
     meli_category: Optional[str] = None  # filled in Module 2
     last_synced_at: Optional[datetime] = None  # ✅ ADDED for Module 2

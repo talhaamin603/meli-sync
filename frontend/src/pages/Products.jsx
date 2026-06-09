@@ -6,7 +6,7 @@ import { getProducts, syncProduct, deleteProduct, getExchangeRate } from "../api
 function StatusBadge({ status, stock, t }) {
   if (stock === 0) {
     return (
-      <span className="px-2 py-0.5 rounded-md text-[11px] font-medium border"
+      <span className="px-2 py-0.5 rounded-md text-[11px] font-medium border whitespace-nowrap"
         style={{ background: "rgba(239,68,68,0.15)", color: "#ef4444", borderColor: "rgba(239,68,68,0.3)" }}>
         Out of Stock
       </span>
@@ -21,7 +21,7 @@ function StatusBadge({ status, stock, t }) {
   const s = styles[status] || styles.pending;
   return (
     <span
-      className="px-2 py-0.5 rounded-md text-[11px] font-medium border"
+      className="px-2 py-0.5 rounded-md text-[11px] font-medium border whitespace-nowrap"
       style={{ background: s.bg, color: s.fg, borderColor: s.border }}
     >
       {s.label}
@@ -308,8 +308,7 @@ function Products() {
                 className="text-[11px] uppercase tracking-wider text-[#6b7785]"
                 style={{ background: "rgba(80,160,250,0.04)" }}
               >
-                <th className="text-left p-3 font-medium">{t("asin")}</th>
-                <th className="p-3 font-medium w-12"></th>
+                <th className="p-3 font-medium w-16"></th>
                 <th className="text-left p-3 font-medium">{t("title")}</th>
                 <th className="text-left p-3 font-medium">Category</th>
                 <th className="text-right p-3 font-medium">Amazon Price</th>
@@ -351,11 +350,16 @@ function Products() {
                     className="hover:bg-[#50A0FA]/[0.04] transition-colors"
                     style={{ borderTop: "1px solid rgba(80,160,250,0.08)" }}
                   >
-                    <td className="p-3 font-mono text-[11px] text-[#a0adbb]">{p.asin}</td>
                     <td className="p-3">
                       {p.image_url
-                        ? <img src={p.image_url} alt="" className="w-9 h-9 rounded object-cover" style={{ background: "#1f2937" }} />
-                        : <div className="w-9 h-9 rounded" style={{ background: "#1f2937" }} />}
+                        ? <img src={p.image_url} alt="" className="w-12 h-12 rounded-lg object-cover" style={{ background: "#1f2937" }} />
+                        : <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ background: "#1a2233" }}>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(80,160,250,0.2)" strokeWidth="1.5">
+                              <rect x="3" y="3" width="18" height="18" rx="3"/>
+                              <circle cx="8.5" cy="8.5" r="1.5"/>
+                              <path d="M21 15l-5-5L5 21"/>
+                            </svg>
+                          </div>}
                     </td>
                     <td className="p-3 max-w-md truncate">
                       <button
@@ -370,15 +374,19 @@ function Products() {
                       </button>
                     </td>
                     {/* Category */}
-                    <td className="p-3 max-w-[140px]">
-                      {p.amazon_category ? (
-                        <span
-                          className="text-[10px] px-1.5 py-0.5 rounded truncate block"
-                          style={{ background: "rgba(80,160,250,0.08)", color: "#6b7785", border: "1px solid rgba(80,160,250,0.12)", maxWidth: 140 }}
-                          title={p.amazon_category}
-                        >
-                          {p.amazon_category.split(" > ").pop()}
-                        </span>
+                    <td className="p-3 max-w-[160px]">
+                      {p.category_path ? (
+                        <div title={p.category_path}>
+                          <span className="text-[9px] block truncate" style={{ color: "#4a5568" }}>
+                            {p.category_path.split(" > ")[0]}
+                          </span>
+                          <span
+                            className="text-[10px] px-1.5 py-0.5 rounded truncate block mt-0.5"
+                            style={{ background: "rgba(80,160,250,0.08)", color: "#a0adbb", border: "1px solid rgba(80,160,250,0.12)", maxWidth: 160 }}
+                          >
+                            {p.category_path.split(" > ").pop()}
+                          </span>
+                        </div>
                       ) : (
                         <span className="text-[#3a4250] text-[11px]">—</span>
                       )}

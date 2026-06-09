@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { addManualProduct } from "../api.js";
+import { addManualProduct, getCategories } from "../api.js";
 
 const MAX_IMAGES = 8;
 
@@ -131,6 +131,53 @@ function ImageURLManager({ urls, onChange, error }) {
   );
 }
 
+// ── Category picker ───────────────────────────────────────────────────────────
+
+const selStyle = {
+  background: "rgba(255,255,255,0.04)",
+  border: "1px solid rgba(80,160,250,0.18)",
+  color: "#e8ecf2",
+  cursor: "pointer",
+  appearance: "none",
+};
+const selDisabledStyle = {
+  ...selStyle,
+  opacity: 0.4,
+  cursor: "not-allowed",
+  color: "#4a5568",
+};
+
+function CategoryPicker({ categories, mainId, subId, onMain, onSub }) {
+  const mains = categories.filter(c => !c.parent_id).sort((a, b) => a.name.localeCompare(b.name));
+  const subs  = mainId
+    ? categories.filter(c => String(c.parent_id) === String(mainId)).sort((a, b) => a.name.localeCompare(b.name))
+    : [];
+  return (
+    <div className="grid grid-cols-2 gap-4">
+      <Field label="Main Category">
+        <select
+          value={mainId} onChange={e => { onMain(e.target.value); onSub(""); }}
+          className={iClass} style={selStyle}
+        >
+          <option value="" disabled style={{ background: "#0f1623", color: "#4a5568" }}>Select main category</option>
+          {mains.map(c => <option key={c.id} value={c.id} style={{ background: "#0f1623" }}>{c.name}</option>)}
+        </select>
+      </Field>
+      <Field label="Subcategory">
+        <select
+          value={subId} onChange={e => onSub(e.target.value)}
+          disabled={!mainId}
+          className={iClass}
+          style={mainId ? selStyle : selDisabledStyle}
+        >
+          <option value="" disabled style={{ background: "#0f1623", color: "#4a5568" }}>Select subcategory</option>
+          {subs.map(c => <option key={c.id} value={c.id} style={{ background: "#0f1623" }}>{c.name}</option>)}
+        </select>
+      </Field>
+    </div>
+  );
+}
+
 // ── main page ─────────────────────────────────────────────────────────────────
 
 function AddProduct() {
@@ -147,6 +194,11 @@ function AddProduct() {
   const [imgError, setImgError] = useState("");
   const [message, setMessage] = useState(null);
   const [saving, setSaving]   = useState(false);
+  const [categories, setCategories] = useState([]);
+  const [mainId, setMainId]   = useState("");
+  const [subId, setSubId]     = useState("");
+
+  useEffect(() => { getCategories().then(setCategories).catch(() => {}); }, []);
 
   function update(field, value) { setForm({ ...form, [field]: value }); }
 
@@ -182,12 +234,14 @@ function AddProduct() {
     setImgError("");
 
     try {
+      const categoryId = subId ? parseInt(subId) : mainId ? parseInt(mainId) : undefined;
       const payload = {
         ...form,
         amazon_price_usd: parseFloat(form.amazon_price_usd) || 0,
         stock: parseInt(form.stock) || 0,
         image_url: filled[0],
         images: filled,
+        ...(categoryId ? { category_id: categoryId } : {}),
       };
 
       const result = await addManualProduct(payload);
@@ -273,6 +327,13 @@ function AddProduct() {
             style={iStyle}
           />
         </Field>
+
+        {/* Category */}
+        <CategoryPicker
+          categories={categories}
+          mainId={mainId} subId={subId}
+          onMain={setMainId} onSub={setSubId}
+        />
 
         {/* Image URLs */}
         <div

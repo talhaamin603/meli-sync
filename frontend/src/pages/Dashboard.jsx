@@ -878,16 +878,16 @@ function Dashboard() {
                 style={{ background: "rgba(255,255,255,0.015)" }}
               >
                 {[
-                  { col: "product",  label: "Product",      align: "left" },
-                  { col: "asin",     label: "ASIN",         align: "left" },
-                  { col: "category", label: "Category",     align: "left" },
-                  { col: "amazon",   label: "Amazon Price", align: "right" },
-                  { col: "ml",       label: "ML Price",     align: "right" },
-                  { col: "margin",   label: "Margin",       align: "right" },
-                  { col: "stock",    label: "Stock",        align: "right" },
-                  { col: "status",   label: "Status",       align: "center" },
-                ].map(({ col, label, align }) => (
-                  <th key={col} className={`px-4 py-3 text-${align}`}>
+                  { col: "product",  label: "Product",      align: "left",   minW: 260 },
+                  { col: "asin",     label: "ASIN",         align: "left",   minW: 110 },
+                  { col: "category", label: "Category",     align: "left",   minW: 150 },
+                  { col: "amazon",   label: "Amazon Price", align: "right",  minW: 110 },
+                  { col: "ml",       label: "ML Price",     align: "right",  minW: 110 },
+                  { col: "margin",   label: "Margin",       align: "right",  minW: 80  },
+                  { col: "stock",    label: "Stock",        align: "right",  minW: 70  },
+                  { col: "status",   label: "Status",       align: "center", minW: 110 },
+                ].map(({ col, label, align, minW }) => (
+                  <th key={col} className={`px-4 py-3 text-${align}`} style={{ minWidth: minW }}>
                     <button
                       onClick={() => handleSort(col)}
                       className="inline-flex items-center gap-1 hover:text-white transition-colors duration-150"
@@ -901,7 +901,6 @@ function Dashboard() {
                     </button>
                   </th>
                 ))}
-                <th className="text-center px-4 py-3">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -940,7 +939,7 @@ function Dashboard() {
                         </div>
                         <button
                           onClick={() => navigate(`/products/${p.id}/edit`, { state: { product: p } })}
-                          className="text-left font-medium text-[12px] max-w-[180px] truncate transition-colors"
+                          className="text-left font-medium text-[12px] max-w-[240px] truncate transition-colors"
                           style={{ color: "#c8d0db" }}
                           onMouseEnter={e => e.currentTarget.style.color = "#50A0FA"}
                           onMouseLeave={e => e.currentTarget.style.color = "#c8d0db"}
@@ -961,14 +960,18 @@ function Dashboard() {
 
                     {/* Category */}
                     <td className="px-4 py-3">
-                      {p.amazon_category ? (
-                        <span
-                          className="text-[10px] px-1.5 py-0.5 rounded block truncate max-w-[120px]"
-                          style={{ background: "rgba(80,160,250,0.08)", color: "#6b7785", border: "1px solid rgba(80,160,250,0.12)" }}
-                          title={p.amazon_category}
-                        >
-                          {p.amazon_category.split(" > ").pop()}
-                        </span>
+                      {p.category_path ? (
+                        <div title={p.category_path}>
+                          <span className="text-[9px] block truncate max-w-[120px]" style={{ color: "#4a5568" }}>
+                            {p.category_path.split(" > ")[0]}
+                          </span>
+                          <span
+                            className="text-[10px] px-1.5 py-0.5 rounded block truncate max-w-[120px] mt-0.5"
+                            style={{ background: "rgba(80,160,250,0.08)", color: "#a0adbb", border: "1px solid rgba(80,160,250,0.12)" }}
+                          >
+                            {p.category_path.split(" > ").pop()}
+                          </span>
+                        </div>
                       ) : (
                         <span className="text-[#3a4250] text-[11px]">—</span>
                       )}
@@ -1016,16 +1019,12 @@ function Dashboard() {
                       <DashboardStatusBadge status={p.status} stock={p.stock} />
                     </td>
 
-                    {/* Actions */}
-                    <td className="px-4 py-3 text-center">
-                      <span className="text-[#4a5568] text-[11px]">—</span>
-                    </td>
                   </tr>
                 );
               })}
               {filteredProducts.length === 0 && (
                 <tr>
-                  <td colSpan="9" className="py-12 text-center text-[#4a5568]">
+                  <td colSpan="8" className="py-12 text-center text-[#4a5568]">
                     <div className="flex flex-col items-center gap-2">
                       <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import api from "../api.js";
+import api, { getCategories } from "../api.js";
 
 const MAX_ASINS = 50;
 const ASIN_RE = /^[A-Z0-9]{10}$/i;
@@ -24,6 +24,14 @@ function parseAsinInput(raw) {
   return { valid: valid.slice(0, MAX_ASINS), capped: valid.length > MAX_ASINS, invalid };
 }
 
+const selStyle = {
+  background: "rgba(255,255,255,0.04)",
+  border: "1px solid rgba(80,160,250,0.18)",
+  color: "#e8ecf2",
+  cursor: "pointer",
+  appearance: "none",
+};
+
 function ImportAsins() {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -32,6 +40,9 @@ function ImportAsins() {
   const [results, setResults] = useState(null);
   const [apiStatus, setApiStatus] = useState(null);
   const [submitError, setSubmitError] = useState("");
+  const [categories, setCategories] = useState([]);
+  const [mainId, setMainId] = useState("");
+  const [subId, setSubId]   = useState("");
 
   const parsed = parseAsinInput(asinText);
 
@@ -39,6 +50,7 @@ function ImportAsins() {
     api.get("/amazon/status")
       .then((r) => setApiStatus(r.data))
       .catch(() => setApiStatus({ configured: false, message: "Backend no disponible" }));
+    getCategories().then(setCategories).catch(() => {});
   }, []);
 
   async function handleImport() {
@@ -51,7 +63,11 @@ function ImportAsins() {
     setImporting(true);
     setResults(null);
     try {
-      const r = await api.post("/amazon/import-asins", { asins: parsed.valid });
+      const categoryId = subId ? parseInt(subId) : mainId ? parseInt(mainId) : undefined;
+      const r = await api.post("/amazon/import-asins", {
+        asins: parsed.valid,
+        ...(categoryId ? { category_id: categoryId } : {}),
+      });
       setResults(r.data);
     } catch (e) {
       setSubmitError(e?.response?.data?.detail || t("importError"));
@@ -149,6 +165,38 @@ function ImportAsins() {
             </div>
           </div>
         )}
+
+        {/* Category */}
+        <div className="grid grid-cols-2 gap-3 mt-4">
+          {(() => {
+            const mains = categories.filter(c => !c.parent_id).sort((a, b) => a.name.localeCompare(b.name));
+            const subs  = mainId
+              ? categories.filter(c => String(c.parent_id) === String(mainId)).sort((a, b) => a.name.localeCompare(b.name))
+              : [];
+            return (
+              <>
+                <div>
+                  <label className="block text-[11px] text-[#6b7785] uppercase tracking-wider mb-1.5">Main Category</label>
+                  <select value={mainId} onChange={e => { setMainId(e.target.value); setSubId(""); }}
+                    className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
+                    style={selStyle}>
+                    <option value="" disabled style={{ background: "#0f1623", color: "#4a5568" }}>Select main category</option>
+                    {mains.map(c => <option key={c.id} value={c.id} style={{ background: "#0f1623" }}>{c.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] text-[#6b7785] uppercase tracking-wider mb-1.5">Subcategory</label>
+                  <select value={subId} onChange={e => setSubId(e.target.value)} disabled={!mainId}
+                    className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
+                    style={{ ...selStyle, opacity: mainId ? 1 : 0.4, cursor: mainId ? "pointer" : "not-allowed" }}>
+                    <option value="" disabled style={{ background: "#0f1623", color: "#4a5568" }}>Select subcategory</option>
+                    {subs.map(c => <option key={c.id} value={c.id} style={{ background: "#0f1623" }}>{c.name}</option>)}
+                  </select>
+                </div>
+              </>
+            );
+          })()}
+        </div>
 
         <div className="flex items-center gap-3 mt-4">
           <button

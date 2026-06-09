@@ -158,7 +158,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
 from app.database import get_session
-from app.models import Product, AuditLog, BlacklistRule, Setting, MarginRule
+from app.models import Product, AuditLog, BlacklistRule, Setting, MarginRule, Category
 from app.services.blacklist import BlacklistFilter
 from app.services.pricing import price_product_for_meli
 
@@ -183,6 +183,7 @@ class ProductInput(BaseModel):
     amazon_price_usd: float = 0.0
     stock: int = 0
     is_prime: bool = True
+    category_id: Optional[int] = None
 
 
 class BlacklistInput(BaseModel):
@@ -205,6 +206,7 @@ class ProductUpdateInput(BaseModel):
     stock: Optional[int] = None
     initial_stock: Optional[int] = None
     times_ordered: Optional[int] = None
+    category_id: Optional[int] = None
 
 
 def _build_blacklist(session: Session) -> BlacklistFilter:
@@ -266,6 +268,7 @@ def _add_one(data: ProductInput, session: Session,
         amazon_price_usd=data.amazon_price_usd,
         converted_price_cop=cop,
         stock=data.stock, is_prime=data.is_prime,
+        category_id=data.category_id,
         status="pending",
     )
     session.add(product)
@@ -326,7 +329,25 @@ def get_products(session: Session = Depends(get_session)):
         .where(Product.deleted_at == None)
         .order_by(Product.created_at.desc())
     ).all()
-    return {"total": len(products), "products": products}
+
+    # Build category_id → "Parent > Sub" path map
+    cats = session.exec(select(Category)).all()
+    cat_map = {c.id: c for c in cats}
+    def cat_path(cat_id):
+        if not cat_id or cat_id not in cat_map:
+            return None
+        sub = cat_map[cat_id]
+        if sub.parent_id and sub.parent_id in cat_map:
+            return f"{cat_map[sub.parent_id].name} > {sub.name}"
+        return sub.name
+
+    result = []
+    for p in products:
+        d = p.model_dump()
+        d["category_path"] = cat_path(p.category_id)
+        result.append(d)
+
+    return {"total": len(result), "products": result}
 
 
 @router.post("/admin/recalculate-prices")
@@ -381,6 +402,8 @@ def update_product(product_id: int, data: ProductUpdateInput, session: Session =
     if data.amazon_price_usd is not None:
         product.amazon_price_usd = data.amazon_price_usd
         product.converted_price_cop = _calc_cop(data.amazon_price_usd, session)
+    if data.category_id is not None:
+        product.category_id = data.category_id
     product.updated_at = datetime.utcnow()
     session.add(product)
     session.commit()

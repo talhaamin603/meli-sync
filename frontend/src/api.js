@@ -118,8 +118,10 @@ export async function searchAmazon(q, page = 1) {
   return res.data;
 }
 
-export async function addFromSearch(products) {
-  const res = await api.post("/amazon/add-from-search", { products });
+export async function addFromSearch(products, category_id) {
+  const body = { products };
+  if (category_id) body.category_id = category_id;
+  const res = await api.post("/amazon/add-from-search", body);
   return res.data;
 }
 

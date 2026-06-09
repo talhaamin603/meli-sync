@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { getProducts, updateProduct } from "../api.js";
+import { getProducts, updateProduct, getCategories } from "../api.js";
 
 const SLOTS = 8;
 
@@ -207,6 +207,27 @@ function ETextarea({ value, onChange, rows = 4 }) {
   );
 }
 
+function ESelect({ value, onChange, children, disabled, placeholder }) {
+  return (
+    <select
+      value={value} onChange={onChange} disabled={disabled}
+      className="w-full rounded-lg px-3 py-2 text-sm outline-none transition-colors appearance-none"
+      style={{
+        background: disabled ? "rgba(80,160,250,0.02)" : "rgba(80,160,250,0.06)",
+        border: "1px solid rgba(80,160,250,0.15)",
+        color: value ? "#e8ecf2" : "#4a5568",
+        cursor: disabled ? "not-allowed" : "pointer",
+        opacity: disabled ? 0.5 : 1,
+      }}
+    >
+      <option value="" disabled style={{ background: "#0f1623", color: "#4a5568" }}>
+        {placeholder || "—"}
+      </option>
+      {children}
+    </select>
+  );
+}
+
 function SectionCard({ title, children }) {
   return (
     <div className="rounded-xl p-5" style={{ background: "#0f1623", border: "1px solid rgba(80,160,250,0.1)" }}>
@@ -253,7 +274,13 @@ export default function ProductEdit() {
   const [timesOrdered, setTimesOrdered] = useState("");
   const [slots, setSlots]               = useState(Array(SLOTS).fill(""));
 
+  const [categories, setCategories]       = useState([]);
+  const [selectedMainId, setSelectedMainId] = useState("");
+  const [selectedSubId, setSelectedSubId]   = useState("");
+
   useEffect(() => {
+    getCategories().then(setCategories).catch(() => {});
+
     if (product) { initForm(product); return; }
     setLoading(true);
     getProducts()
@@ -277,13 +304,36 @@ export default function ProductEdit() {
     setInitialStock(p.initial_stock ?? "");
     setTimesOrdered(p.times_ordered ?? 0);
     setSlots(toSlots(parseImages(p)));
+    if (p.category_id) {
+      // resolved once categories load — see effect below
+      setSelectedSubId(String(p.category_id));
+    }
   }
+
+  // Once categories load, figure out the matching main category
+  useEffect(() => {
+    if (!categories.length || !selectedSubId) return;
+    const sub = categories.find((c) => String(c.id) === String(selectedSubId));
+    if (sub?.parent_id) {
+      setSelectedMainId(String(sub.parent_id));
+    } else if (sub && !sub.parent_id) {
+      // category_id points to a main category directly
+      setSelectedMainId(String(sub.id));
+      setSelectedSubId("");
+    }
+  // eslint-disable-next-line
+  }, [categories]);
 
   async function handleSave() {
     if (!title.trim()) { setError("Title is required."); return; }
     const filledImages = slots.filter(Boolean);
     setSaving(true); setError("");
     try {
+      const resolvedCategoryId = selectedSubId
+        ? parseInt(selectedSubId, 10)
+        : selectedMainId
+          ? parseInt(selectedMainId, 10)
+          : undefined;
       await updateProduct(product.id, {
         title:            title.trim(),
         description:      description.trim(),
@@ -292,6 +342,7 @@ export default function ProductEdit() {
         stock:            stock !== "" ? parseInt(stock, 10) : undefined,
         initial_stock:    initialStock !== "" ? parseInt(initialStock, 10) : undefined,
         times_ordered:    timesOrdered !== "" ? parseInt(timesOrdered, 10) : undefined,
+        category_id:      resolvedCategoryId,
       });
       setSaved(true);
       setTimeout(() => navigate("/products"), 900);
@@ -417,6 +468,42 @@ export default function ProductEdit() {
                 <EInput value={cop && cop > 0 ? Number(cop).toLocaleString() + " COP" : "—"} readOnly />
               </Field>
             </div>
+          </SectionCard>
+
+          <SectionCard title="Category">
+            {(() => {
+              const mainCats = categories.filter((c) => !c.parent_id).sort((a, b) => a.name.localeCompare(b.name));
+              const subCats  = selectedMainId
+                ? categories.filter((c) => String(c.parent_id) === String(selectedMainId)).sort((a, b) => a.name.localeCompare(b.name))
+                : [];
+              return (
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="Main Category">
+                    <ESelect
+                      value={selectedMainId}
+                      placeholder="Select main category"
+                      onChange={(e) => { setSelectedMainId(e.target.value); setSelectedSubId(""); }}
+                    >
+                      {mainCats.map((c) => (
+                        <option key={c.id} value={c.id} style={{ background: "#0f1623", color: "#e8ecf2" }}>{c.name}</option>
+                      ))}
+                    </ESelect>
+                  </Field>
+                  <Field label="Subcategory">
+                    <ESelect
+                      value={selectedSubId}
+                      placeholder="Select subcategory"
+                      onChange={(e) => setSelectedSubId(e.target.value)}
+                      disabled={!selectedMainId}
+                    >
+                      {subCats.map((c) => (
+                        <option key={c.id} value={c.id} style={{ background: "#0f1623", color: "#e8ecf2" }}>{c.name}</option>
+                      ))}
+                    </ESelect>
+                  </Field>
+                </div>
+              );
+            })()}
           </SectionCard>
 
           <SectionCard title="Inventory">
