@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { addManualProduct } from "../api.js";
 
@@ -133,6 +134,7 @@ function ImageURLManager({ urls, onChange, error }) {
 // ── main page ─────────────────────────────────────────────────────────────────
 
 function AddProduct() {
+  const navigate = useNavigate();
   const { t } = useTranslation();
 
   const emptyForm = {
@@ -214,6 +216,11 @@ function AddProduct() {
   return (
     <div>
       <div className="fade-up mb-6">
+        <div className="flex items-center gap-1.5 text-[11px] text-[#4a5568] mb-3">
+          <button onClick={() => navigate("/add")} className="hover:text-[#50A0FA] transition-colors">Add Products</button>
+          <span>/</span>
+          <span className="text-[#6b7785]">Manually</span>
+        </div>
         <h1 className="text-2xl font-medium text-white mb-1">{t("addProductTitle")}</h1>
         <p className="text-sm text-[#6b7785]">{t("addProductSubtitle")}</p>
       </div>

@@ -92,6 +92,37 @@ export async function refetchImages() {
   return res.data;
 }
 
+// ---- CATEGORIES ----
+export async function getCategories() {
+  const res = await api.get("/categories");
+  return res.data;
+}
+
+export async function createCategory(name, parent_id = null) {
+  const res = await api.post("/categories", { name, parent_id });
+  return res.data;
+}
+
+export async function updateCategory(id, name) {
+  const res = await api.put(`/categories/${id}`, { name });
+  return res.data;
+}
+
+export async function deleteCategory(id) {
+  const res = await api.delete(`/categories/${id}`);
+  return res.data;
+}
+
+export async function searchAmazon(q, page = 1) {
+  const res = await api.get("/amazon/search", { params: { q, page } });
+  return res.data;
+}
+
+export async function addFromSearch(products) {
+  const res = await api.post("/amazon/add-from-search", { products });
+  return res.data;
+}
+
 // ---- SYNC ----
 export async function getSyncHistory() {
   const res = await api.get("/sync/history");

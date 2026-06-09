@@ -9,6 +9,7 @@ from app.routers import manual_products
 from app.routers import meli
 from app.routers import amazon as amazon_router
 from app.routers import sync as sync_router
+from app.routers import categories as categories_router
 # from app.routers import auth as auth_router   # ← disabled locally (router not yet created)
 
 app = FastAPI(title="Meli Sync - Module 1 & 2")
@@ -38,6 +39,7 @@ app.include_router(manual_products.router)
 app.include_router(meli.router)
 app.include_router(amazon_router.router)
 app.include_router(sync_router.router)
+app.include_router(categories_router.router)
 # app.include_router(auth_router.router)        # ← disabled locally
 
 # ============================================================

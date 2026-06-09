@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from sqlmodel import Session, select
 from app.database import get_session
 from app.models import Product, BlacklistRule, AuditLog
-from app.services.amazon import fetch_product, is_configured
+from app.services.amazon import fetch_product, search_products, is_configured
 
 try:
     from app.services.pricing import price_product_for_meli
@@ -28,6 +28,18 @@ router = APIRouter(prefix="/api/amazon", tags=["amazon"])
 
 class ImportBody(BaseModel):
     asins: list[str]
+
+
+class SearchProductItem(BaseModel):
+    asin: str
+    title: str
+    image_url: str
+    amazon_price_usd: float
+    is_prime: bool = False
+
+
+class AddFromSearchBody(BaseModel):
+    products: list[SearchProductItem]
 
 
 def _normalize_text(text: str) -> str:
@@ -157,6 +169,7 @@ def import_asins(
                 converted_price_cop=0.0,
                 stock=product_data["stock"],
                 is_prime=product_data["is_prime"],
+                amazon_category=product_data.get("amazon_category") or "",
                 status="blocked",
                 block_reason=f"matched: {hit}",
             ))
@@ -184,6 +197,7 @@ def import_asins(
             converted_price_cop=cop_price,
             stock=product_data["stock"],
             is_prime=product_data["is_prime"],
+            amazon_category=product_data.get("amazon_category") or "",
             status="pending",
         ))
         session.add(AuditLog(
@@ -196,6 +210,82 @@ def import_asins(
             "price_usd": usd_price,
             "price_cop": cop_price,
         })
+        summary["added"] += 1
+        session.commit()
+
+    return {"results": results, "summary": summary}
+
+
+@router.get("/search")
+def search_amazon(q: str, page: int = 1):
+    if not is_configured():
+        raise HTTPException(status_code=400, detail="Amazon RapidAPI not configured.")
+    if not q or not q.strip():
+        raise HTTPException(status_code=400, detail="Query cannot be empty.")
+    results = search_products(q.strip(), page=page)
+    return {"results": results, "query": q.strip(), "page": page}
+
+
+@router.post("/add-from-search")
+def add_from_search(
+    body: AddFromSearchBody,
+    session: Session = Depends(get_session),
+):
+    if not body.products:
+        return {"results": [], "summary": {"added": 0, "blocked": 0, "skipped": 0}}
+
+    terms = _load_blacklist_set(session)
+    results = []
+    summary = {"added": 0, "blocked": 0, "skipped": 0}
+
+    for item in body.products:
+        asin = item.asin.strip().upper()
+
+        existing = session.exec(select(Product).where(Product.asin == asin)).first()
+        if existing:
+            results.append({"asin": asin, "status": "skipped", "reason": "Already in catalog"})
+            summary["skipped"] += 1
+            continue
+
+        hit = _blacklist_hit(item.title, terms)
+        usd_price = item.amazon_price_usd or 0
+
+        if hit:
+            session.add(Product(
+                asin=asin,
+                title=item.title,
+                description="",
+                image_url=item.image_url,
+                images=json.dumps([item.image_url] if item.image_url else []),
+                amazon_price_usd=usd_price,
+                converted_price_cop=0.0,
+                stock=10,
+                is_prime=item.is_prime,
+                status="blocked",
+                block_reason=f"matched: {hit}",
+            ))
+            session.add(AuditLog(action="search_import_blocked", asin=asin, detail=f"matched: {hit}"))
+            results.append({"asin": asin, "status": "blocked", "title": item.title[:80], "reason": f"Blacklisted: {hit}"})
+            summary["blocked"] += 1
+            session.commit()
+            continue
+
+        cop_price = _safe_calculate_cop(usd_price, session)
+
+        session.add(Product(
+            asin=asin,
+            title=item.title,
+            description="",
+            image_url=item.image_url,
+            images=json.dumps([item.image_url] if item.image_url else []),
+            amazon_price_usd=usd_price,
+            converted_price_cop=cop_price,
+            stock=10,
+            is_prime=item.is_prime,
+            status="pending",
+        ))
+        session.add(AuditLog(action="search_import_added", asin=asin, detail=f"price=${usd_price} -> {cop_price} COP"))
+        results.append({"asin": asin, "status": "added", "title": item.title[:80]})
         summary["added"] += 1
         session.commit()
 

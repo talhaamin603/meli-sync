@@ -878,13 +878,14 @@ function Dashboard() {
                 style={{ background: "rgba(255,255,255,0.015)" }}
               >
                 {[
-                  { col: "product", label: "Product",      align: "left" },
-                  { col: "asin",    label: "ASIN",         align: "left" },
-                  { col: "amazon",  label: "Amazon Price", align: "right" },
-                  { col: "ml",      label: "ML Price",     align: "right" },
-                  { col: "margin",  label: "Margin",       align: "right" },
-                  { col: "stock",   label: "Stock",        align: "right" },
-                  { col: "status",  label: "Status",       align: "center" },
+                  { col: "product",  label: "Product",      align: "left" },
+                  { col: "asin",     label: "ASIN",         align: "left" },
+                  { col: "category", label: "Category",     align: "left" },
+                  { col: "amazon",   label: "Amazon Price", align: "right" },
+                  { col: "ml",       label: "ML Price",     align: "right" },
+                  { col: "margin",   label: "Margin",       align: "right" },
+                  { col: "stock",    label: "Stock",        align: "right" },
+                  { col: "status",   label: "Status",       align: "center" },
                 ].map(({ col, label, align }) => (
                   <th key={col} className={`px-4 py-3 text-${align}`}>
                     <button
@@ -958,6 +959,21 @@ function Dashboard() {
                       </code>
                     </td>
 
+                    {/* Category */}
+                    <td className="px-4 py-3">
+                      {p.amazon_category ? (
+                        <span
+                          className="text-[10px] px-1.5 py-0.5 rounded block truncate max-w-[120px]"
+                          style={{ background: "rgba(80,160,250,0.08)", color: "#6b7785", border: "1px solid rgba(80,160,250,0.12)" }}
+                          title={p.amazon_category}
+                        >
+                          {p.amazon_category.split(" > ").pop()}
+                        </span>
+                      ) : (
+                        <span className="text-[#3a4250] text-[11px]">—</span>
+                      )}
+                    </td>
+
                     {/* Amazon Price */}
                     <td className="px-4 py-3 text-right">
                       <span className="text-[#c8d0db] font-bold text-[13px]">
@@ -1009,7 +1025,7 @@ function Dashboard() {
               })}
               {filteredProducts.length === 0 && (
                 <tr>
-                  <td colSpan="8" className="py-12 text-center text-[#4a5568]">
+                  <td colSpan="9" className="py-12 text-center text-[#4a5568]">
                     <div className="flex flex-col items-center gap-2">
                       <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />

@@ -1,14 +1,39 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import api from "../api.js";
 
+const MAX_ASINS = 50;
+const ASIN_RE = /^[A-Z0-9]{10}$/i;
+
+function parseAsinInput(raw) {
+  const tokens = raw.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+  const valid = [];
+  const invalid = [];
+
+  for (const token of tokens) {
+    if (token.includes("/") || token.toLowerCase().startsWith("http")) {
+      invalid.push({ value: token.slice(0, 40), reason: "Links are not allowed — use ASIN only" });
+    } else if (!ASIN_RE.test(token)) {
+      invalid.push({ value: token.slice(0, 40), reason: `Must be exactly 10 alphanumeric characters (got ${token.length})` });
+    } else if (!valid.includes(token.toUpperCase())) {
+      valid.push(token.toUpperCase());
+    }
+  }
+
+  return { valid: valid.slice(0, MAX_ASINS), capped: valid.length > MAX_ASINS, invalid };
+}
+
 function ImportAsins() {
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const [asinText, setAsinText] = useState("");
   const [importing, setImporting] = useState(false);
   const [results, setResults] = useState(null);
   const [apiStatus, setApiStatus] = useState(null);
-  const [error, setError] = useState("");
+  const [submitError, setSubmitError] = useState("");
+
+  const parsed = parseAsinInput(asinText);
 
   useEffect(() => {
     api.get("/amazon/status")
@@ -17,37 +42,36 @@ function ImportAsins() {
   }, []);
 
   async function handleImport() {
-    setError("");
-    const asins = asinText
-      .split(/[\n,]+/)
-      .map((s) => s.trim())
-      .filter(Boolean);
-
-    if (asins.length === 0) {
-      setError(t("noAsinsEntered"));
+    setSubmitError("");
+    if (parsed.valid.length === 0) {
+      setSubmitError("No valid ASINs entered.");
       return;
     }
 
     setImporting(true);
     setResults(null);
     try {
-      const r = await api.post("/amazon/import-asins", { asins });
+      const r = await api.post("/amazon/import-asins", { asins: parsed.valid });
       setResults(r.data);
     } catch (e) {
-      setError(
-        e?.response?.data?.detail ||
-        t("importError")
-      );
+      setSubmitError(e?.response?.data?.detail || t("importError"));
     } finally {
       setImporting(false);
     }
   }
 
+  const hasInput = asinText.trim().length > 0;
+
   return (
     <div>
       <div className="fade-up mb-6">
+        <div className="flex items-center gap-1.5 text-[11px] text-[#4a5568] mb-3">
+          <button onClick={() => navigate("/add")} className="hover:text-[#50A0FA] transition-colors">Add Products</button>
+          <span>/</span>
+          <span className="text-[#6b7785]">By ASIN</span>
+        </div>
         <h1 className="text-2xl font-medium text-white mb-1">{t("importAsinsTitle")}</h1>
-        <p className="text-sm text-[#6b7785]">{t("importAsinsSubtitle")}</p>
+        <p className="text-sm text-[#6b7785]">Enter Amazon ASINs to import product data automatically. ASINs only — links are not accepted.</p>
       </div>
 
       {/* API status banner */}
@@ -74,43 +98,81 @@ function ImportAsins() {
         className="card rounded-xl p-5 mb-4"
         style={{ animation: "fadeUp 0.5s ease-out 0.1s backwards" }}
       >
-        <label className="block text-[11px] text-[#6b7785] uppercase tracking-wider mb-2">
-          {t("pasteAsins")}
-        </label>
+        <div className="flex items-center justify-between mb-2">
+          <label className="block text-[11px] text-[#6b7785] uppercase tracking-wider">
+            Amazon ASINs
+          </label>
+          <span className="text-[11px]" style={{ color: parsed.valid.length > 0 ? "#50A0FA" : "#4a5568" }}>
+            {hasInput ? `${parsed.valid.length} / ${MAX_ASINS} valid` : `Max ${MAX_ASINS} per import`}
+          </span>
+        </div>
+
         <textarea
           value={asinText}
-          onChange={(e) => setAsinText(e.target.value)}
+          onChange={(e) => { setAsinText(e.target.value); setSubmitError(""); setResults(null); }}
           rows={6}
-          placeholder={"B08T8L371P\nB0DHRQXYCH\nhttps://www.amazon.com/.../dp/B08L8B5JR2/..."}
+          placeholder={"B08T8L371P\nB0DHRQXYCH, B09G9HD3R9\nB0CHX3QBCH"}
           className="w-full rounded-lg px-3 py-2.5 text-sm text-[#e8ecf2] font-mono resize-y"
           style={{
             background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(80,160,250,0.18)",
+            border: `1px solid ${parsed.invalid.length > 0 && hasInput ? "rgba(239,68,68,0.4)" : "rgba(80,160,250,0.18)"}`,
           }}
         />
-        <div className="text-[11px] text-[#6b7785] mt-2">
-          {t("asinHelp")}
-        </div>
+
+        <p className="text-[11px] text-[#4a5568] mt-1.5">
+          One per line or comma-separated · Each ASIN must be exactly 10 characters · No URLs
+        </p>
+
+        {/* Overflow warning */}
+        {parsed.capped && (
+          <div className="mt-2 px-3 py-2 rounded-lg text-xs flex items-center gap-2"
+            style={{ background: "rgba(245,158,11,0.1)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.2)" }}>
+            <span>⚠</span> Only the first {MAX_ASINS} ASINs will be imported. Remove the extras or split into batches.
+          </div>
+        )}
+
+        {/* Invalid entries */}
+        {parsed.invalid.length > 0 && hasInput && (
+          <div className="mt-3 rounded-lg overflow-hidden"
+            style={{ border: "1px solid rgba(239,68,68,0.2)" }}>
+            <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider"
+              style={{ background: "rgba(239,68,68,0.08)", color: "#ef4444" }}>
+              {parsed.invalid.length} invalid {parsed.invalid.length === 1 ? "entry" : "entries"} — will be skipped
+            </div>
+            <div className="divide-y" style={{ borderColor: "rgba(239,68,68,0.1)" }}>
+              {parsed.invalid.map((inv, i) => (
+                <div key={i} className="px-3 py-1.5 flex items-center gap-3 text-xs">
+                  <code className="font-mono text-[#ef4444]">{inv.value}</code>
+                  <span className="text-[#6b7785]">{inv.reason}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="flex items-center gap-3 mt-4">
           <button
             onClick={handleImport}
-            disabled={importing || !apiStatus?.configured}
+            disabled={importing || !apiStatus?.configured || parsed.valid.length === 0}
             className="px-5 py-2.5 rounded-lg font-medium text-sm transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
             style={{
               background: "#50A0FA",
               color: "#0d1117",
-              boxShadow: "0 0 18px rgba(80,160,250,0.45)",
+              boxShadow: parsed.valid.length > 0 ? "0 0 18px rgba(80,160,250,0.45)" : "none",
             }}
           >
-            {importing ? t("importing") : t("importNow") + " →"}
+            {importing
+              ? t("importing")
+              : parsed.valid.length > 0
+                ? `Import ${parsed.valid.length} ASIN${parsed.valid.length !== 1 ? "s" : ""} →`
+                : "Import →"}
           </button>
-          {error && (
+          {submitError && (
             <div
               className="px-3 py-2 rounded-lg text-xs"
               style={{ background: "rgba(239,68,68,0.12)", color: "#ef4444" }}
             >
-              {error}
+              {submitError}
             </div>
           )}
         </div>

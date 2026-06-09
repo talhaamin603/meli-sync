@@ -21,6 +21,8 @@ def migrate_db():
         "ALTER TABLE product ADD COLUMN initial_stock INTEGER",
         "ALTER TABLE product ADD COLUMN times_ordered INTEGER DEFAULT 0",
         "ALTER TABLE product ADD COLUMN deleted_at DATETIME",
+        "ALTER TABLE product ADD COLUMN amazon_category TEXT",
+        "ALTER TABLE product ADD COLUMN category_id INTEGER",
     ]
     with engine.connect() as conn:
         for stmt in migrations:

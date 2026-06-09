@@ -31,6 +31,13 @@ function IconImport() {
     </svg>
   );
 }
+function IconCategory() {
+  return (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
+    </svg>
+  );
+}
 function IconBlacklist() {
   return (
     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
@@ -152,8 +159,8 @@ function Layout() {
         <nav className="flex-1 px-2 pb-3 overflow-y-auto">
           <NavItem to="/dashboard"  icon={<IconDashboard />}  label={t("dashboard")} />
           <NavItem to="/products"   icon={<IconProducts />}   label={t("products")} />
-          <NavItem to="/add"        icon={<IconAdd />}        label={t("addProduct")} />
-          <NavItem to="/import"        icon={<IconImport />}  label={t("importByAsin")} />
+          <NavItem to="/categories" icon={<IconCategory />}  label="Categories" />
+          <NavItem to="/add"        icon={<IconAdd />}        label="Add Products" />
           <NavItem to="/margin-config" icon={<IconMargin />}  label="Margin Config" />
           <NavItem to="/blacklist"   icon={<IconBlacklist />}  label={t("blacklist")} />
           <NavItem to="/recycle-bin" icon={<IconTrash />}      label="Recycle Bin" />

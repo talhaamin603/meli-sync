@@ -5,11 +5,14 @@ import Dashboard from "./pages/Dashboard.jsx";
 import Products from "./pages/Products.jsx";
 import ProductEdit from "./pages/ProductEdit.jsx";
 import AddProduct from "./pages/AddProduct.jsx";
+import AddProductHub from "./pages/AddProductHub.jsx";
+import SearchAmazon from "./pages/SearchAmazon.jsx";
 import Blacklist from "./pages/Blacklist.jsx";
 import Settings from "./pages/Settings.jsx";
 import ImportAsins from "./pages/ImportAsins.jsx";
 import RecycleBin from "./pages/RecycleBin.jsx";
 import MarginConfig from "./pages/MarginConfig.jsx";
+import Categories from "./pages/Categories.jsx";
 
 function App() {
   return (
@@ -23,12 +26,16 @@ function App() {
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="products" element={<Products />} />
         <Route path="products/:id/edit" element={<ProductEdit />} />
-        <Route path="add" element={<AddProduct />} />
+        <Route path="add" element={<AddProductHub />} />
+        <Route path="add/manual" element={<AddProduct />} />
+        <Route path="add/asin" element={<ImportAsins />} />
+        <Route path="add/search" element={<SearchAmazon />} />
+        <Route path="import" element={<ImportAsins />} />
         <Route path="blacklist" element={<Blacklist />} />
         <Route path="settings" element={<Settings />} />
-        <Route path="import" element={<ImportAsins />} />
         <Route path="recycle-bin" element={<RecycleBin />} />
         <Route path="margin-config" element={<MarginConfig />} />
+        <Route path="categories" element={<Categories />} />
       </Route>
     </Routes>
   );

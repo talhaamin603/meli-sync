@@ -311,6 +311,7 @@ function Products() {
                 <th className="text-left p-3 font-medium">{t("asin")}</th>
                 <th className="p-3 font-medium w-12"></th>
                 <th className="text-left p-3 font-medium">{t("title")}</th>
+                <th className="text-left p-3 font-medium">Category</th>
                 <th className="text-right p-3 font-medium">Amazon Price</th>
                 <th className="text-right p-3 font-medium">ML Price</th>
                 <th className="text-right p-3 font-medium">Margin</th>
@@ -368,6 +369,21 @@ function Products() {
                         {p.title}
                       </button>
                     </td>
+                    {/* Category */}
+                    <td className="p-3 max-w-[140px]">
+                      {p.amazon_category ? (
+                        <span
+                          className="text-[10px] px-1.5 py-0.5 rounded truncate block"
+                          style={{ background: "rgba(80,160,250,0.08)", color: "#6b7785", border: "1px solid rgba(80,160,250,0.12)", maxWidth: 140 }}
+                          title={p.amazon_category}
+                        >
+                          {p.amazon_category.split(" > ").pop()}
+                        </span>
+                      ) : (
+                        <span className="text-[#3a4250] text-[11px]">—</span>
+                      )}
+                    </td>
+
                     {/* Amazon Price */}
                     <td className="p-3 text-right">
                       <span className="text-[#c8d0db] font-bold text-[13px]">

@@ -100,6 +100,9 @@ def _normalize_rapidapi_response(asin: str, raw: dict) -> Optional[dict]:
     # ---- prime flag ----
     is_prime = bool(data.get("is_prime") or data.get("prime"))
 
+    # ---- category (full breadcrumb path) ----
+    category = _extract_category(data)
+
     return {
         "asin": asin,
         "title": title.strip()[:200],
@@ -109,6 +112,7 @@ def _normalize_rapidapi_response(asin: str, raw: dict) -> Optional[dict]:
         "amazon_price_usd": price,
         "is_prime": is_prime,
         "stock": 10,
+        "amazon_category": category,
     }
 
 
@@ -153,6 +157,29 @@ def _extract_images(data: dict) -> tuple[str, list[str]]:
     return main_url, all_urls
 
 
+def _extract_category(data: dict) -> str:
+    """Return the full category breadcrumb as a string, e.g. 'Electronics > Headphones > Earbuds'."""
+    cats = (
+        data.get("categories")
+        or data.get("category_path")
+        or data.get("breadcrumbs")
+        or []
+    )
+    if isinstance(cats, list) and cats:
+        names = []
+        for c in cats:
+            if isinstance(c, dict):
+                names.append(c.get("name") or c.get("label") or c.get("category_name") or "")
+            elif isinstance(c, str):
+                names.append(c)
+        parts = [n.strip() for n in names if n.strip()]
+        if parts:
+            return " > ".join(parts)
+    if isinstance(cats, str) and cats.strip():
+        return cats.strip()
+    return data.get("product_category") or data.get("category") or ""
+
+
 def _join_bullets(data: dict) -> str:
     """Build description from bullet_points or fallback to description text."""
     bullets = data.get("bullet_points") or data.get("about_product") or data.get("features")
@@ -180,7 +207,53 @@ def _parse_price(raw) -> float:
         return 0.0
 
 
-# ---------- Public function ----------
+# ---------- Public functions ----------
+
+def search_products(query: str, page: int = 1) -> list[dict]:
+    if not is_configured():
+        raise RuntimeError("Amazon RapidAPI not configured. Set RAPIDAPI_KEY in .env")
+
+    url = f"https://{RAPIDAPI_HOST}/search"
+    headers = {
+        "X-RapidAPI-Key": RAPIDAPI_KEY,
+        "X-RapidAPI-Host": RAPIDAPI_HOST,
+    }
+    params = {
+        "query": query,
+        "page": str(page),
+        "country": "US",
+        "sort_by": "RELEVANCE",
+        "product_condition": "ALL",
+    }
+
+    try:
+        r = httpx.get(url, headers=headers, params=params, timeout=30)
+        if r.status_code != 200:
+            print(f"[amazon] search '{query}' HTTP {r.status_code}: {r.text[:200]}")
+            return []
+        raw = r.json()
+    except Exception as e:
+        print(f"[amazon] search '{query}' error: {e}")
+        return []
+
+    products = raw.get("data", {}).get("products") or []
+    results = []
+    for p in products:
+        asin = (p.get("asin") or "").strip().upper()
+        if len(asin) != 10 or not asin.isalnum():
+            continue
+        price = _parse_price(p.get("product_price"))
+        results.append({
+            "asin": asin,
+            "title": (p.get("product_title") or "")[:200],
+            "image_url": p.get("product_photo") or "",
+            "amazon_price_usd": price,
+            "star_rating": str(p.get("product_star_rating") or ""),
+            "num_ratings": int(p.get("product_num_ratings") or 0),
+            "is_prime": bool(p.get("is_prime")),
+        })
+    return results
+
 
 def fetch_product(asin: str) -> Optional[dict]:
     asin = asin.strip().upper()

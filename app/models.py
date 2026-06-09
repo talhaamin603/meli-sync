@@ -18,6 +18,7 @@ class Product(SQLModel, table=True):
     initial_stock: Optional[int] = None
     times_ordered: int = 0
     is_prime: bool = False
+    amazon_category: Optional[str] = None  # full category path from Amazon
     meli_item_id: Optional[str] = None  # filled in Module 2
     meli_category: Optional[str] = None  # filled in Module 2
     last_synced_at: Optional[datetime] = None  # ✅ ADDED for Module 2
@@ -26,6 +27,14 @@ class Product(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     deleted_at: Optional[datetime] = None  # set on soft-delete, None = active
+
+
+class Category(SQLModel, table=True):
+    """Product category tree — supports unlimited depth via parent_id."""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str
+    parent_id: Optional[int] = Field(default=None, foreign_key="category.id")
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 class BlacklistRule(SQLModel, table=True):
