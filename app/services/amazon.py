@@ -3,19 +3,19 @@ app/services/amazon.py
 Fetches product details from RapidAPI 'Real-Time Amazon Data' (letscrape).
 
 Updated to handle the actual response shape from /product-details:
-  {
+{
     "status": true,
     "data": {
-      "asin": "...",
-      "title": "...",
-      "price": "$36.00",
-      "is_prime": true,
-      "is_amazon_choice": true,
-      "images": [
-        {"variant": "MAIN", "image": "https://..."},
-        ...
-      ],
-      "bullet_points": ["...", "...", ...]
+    "asin": "...",
+    "title": "...",
+    "price": "$36.00",
+    "is_prime": true,
+    "is_amazon_choice": true,
+    "images": [
+    {"variant": "MAIN", "image": "https://..."},
+    ...
+    ],
+    "bullet_points": ["...", "...", ...]
     }
   }
 

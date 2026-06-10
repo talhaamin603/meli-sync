@@ -12,7 +12,6 @@ export default {
     addProduct: "Add Product",
     importByAsin: "Import Amazon",
     blacklist: "Blacklist",
-    settings: "Settings",
     logout: "Logout",
   
     dashboardTitle: "Dashboard",
@@ -65,15 +64,7 @@ export default {
     addTerm: "Add term",
     noTerms: "No terms found.",
   
-    settingsTitle: "Settings",
-    settingsSubtitle: "Pricing and sync configuration",
-    shippingUsd: "Shipping cost (USD)",
-    marginPct: "Profit margin (%)",
-    syncHours: "Sync frequency (hours)",
-    save: "Save",
-    saved: "Saved!",
-    loadingSettings: "Loading settings...",
-  
+
     importAsinsTitle: "Import from Amazon",
     importAsinsSubtitle: "Paste one or many ASINs (or Amazon links) to import",
     pasteAsins: "ASINs (one per line or comma-separated)",

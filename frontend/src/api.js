@@ -137,15 +137,11 @@ export async function getExchangeRate() {
   return res.data;
 }
 
-// ---- SETTINGS ----
-export async function getSettings() {
-  const res = await api.get("/settings");
+// ---- ADMIN ----
+export async function recalculatePrices() {
+  const res = await api.post("/admin/recalculate-prices");
   return res.data;
 }
 
-export async function updateSettings(settings) {
-  const res = await api.put("/settings", settings);
-  return res.data;
-}
 
 export default api;

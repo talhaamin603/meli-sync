@@ -57,7 +57,11 @@ def get_tiered_markup(amazon_price_usd: float, session: Session) -> float:
     for rule in rules:
         if rule.min_price <= amazon_price_usd <= rule.max_price:
             return rule.markup_pct
-    # price is at or above the last rule's max — use the last rule
+    # No exact match — round up to the first rule whose min is above the price
+    for rule in rules:
+        if rule.min_price > amazon_price_usd:
+            return rule.markup_pct
+    # Price is above all ranges — use the last rule
     return rules[-1].markup_pct
 
 

@@ -21,18 +21,46 @@ function Field({ label, required, children }) {
 const iStyle = { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(80,160,250,0.18)" };
 const iClass  = "w-full rounded-lg px-3 py-2.5 text-sm text-[#e8ecf2] outline-none transition-colors";
 
+// Returns true if the string is a valid http/https URL
+function isValidHttpUrl(str) {
+  try {
+    const { protocol } = new URL(str);
+    return protocol === "http:" || protocol === "https:";
+  } catch { return false; }
+}
+
 // ── image URL manager ─────────────────────────────────────────────────────────
 
-function ImageURLManager({ urls, onChange, error }) {
-  // urls = array of 8 strings (some may be empty)
+function ImageURLManager({ urls, onChange, onLoadErrors, error }) {
+  const [loadFailed, setLoadFailed] = useState(new Set());
+
+  function markFailed(idx) {
+    setLoadFailed(prev => {
+      const next = new Set(prev);
+      next.add(idx);
+      onLoadErrors(next);
+      return next;
+    });
+  }
+
+  function markOk(idx) {
+    setLoadFailed(prev => {
+      if (!prev.has(idx)) return prev;
+      const next = new Set(prev);
+      next.delete(idx);
+      onLoadErrors(next);
+      return next;
+    });
+  }
 
   function setUrl(idx, val) {
     const next = [...urls];
     next[idx] = val;
     onChange(next);
+    // clear error for this slot when user clears/edits the field
+    if (!val.trim()) markOk(idx);
   }
 
-  // check if a url is a duplicate of another slot
   function isDuplicate(idx) {
     const v = urls[idx].trim();
     if (!v) return false;
@@ -54,71 +82,87 @@ function ImageURLManager({ urls, onChange, error }) {
       {/* 2 rows × 4 cols grid */}
       <div className="grid grid-cols-2 gap-2.5">
         {Array.from({ length: MAX_IMAGES }, (_, idx) => {
-          const val  = urls[idx];
-          const dup  = isDuplicate(idx);
-          const hasVal = val.trim().length > 0;
+          const val     = urls[idx];
+          const trimmed = val.trim();
+          const dup     = isDuplicate(idx);
+          const hasVal  = trimmed.length > 0;
           const isCover = idx === 0;
+          const badUrl  = hasVal && !isValidHttpUrl(trimmed);
+          const imgFail = loadFailed.has(idx);
+          const isError = dup || badUrl || imgFail;
 
           return (
-            <div key={idx} className="flex items-center gap-2">
-              {/* thumbnail preview or numbered placeholder */}
-              <div
-                className="flex-shrink-0 w-9 h-9 rounded-lg overflow-hidden flex items-center justify-center text-[10px] font-semibold"
-                style={{
-                  background: hasVal ? "transparent" : "rgba(80,160,250,0.06)",
-                  border: isCover
-                    ? "1.5px solid rgba(80,160,250,0.5)"
-                    : "1.5px solid rgba(80,160,250,0.12)",
-                  color: "#4a5568",
-                  minWidth: 36,
-                }}
-              >
-                {hasVal ? (
-                  <img
-                    src={val}
-                    alt=""
-                    className="w-full h-full object-cover"
-                    onError={(e) => { e.target.style.display = "none"; e.target.parentNode.innerHTML = `<span style="color:#ef4444;font-size:10px">✕</span>`; }}
+            <div key={idx}>
+              <div className="flex items-center gap-2">
+                {/* thumbnail preview or numbered placeholder */}
+                <div
+                  className="flex-shrink-0 w-9 h-9 rounded-lg overflow-hidden flex items-center justify-center text-[10px] font-semibold"
+                  style={{
+                    background: hasVal ? "transparent" : "rgba(80,160,250,0.06)",
+                    border: isError
+                      ? "1.5px solid rgba(239,68,68,0.6)"
+                      : isCover
+                      ? "1.5px solid rgba(80,160,250,0.5)"
+                      : "1.5px solid rgba(80,160,250,0.12)",
+                    minWidth: 36,
+                  }}
+                >
+                  {hasVal && !badUrl ? (
+                    <img
+                      src={trimmed}
+                      alt=""
+                      className="w-full h-full object-cover"
+                      onLoad={() => markOk(idx)}
+                      onError={() => markFailed(idx)}
+                    />
+                  ) : imgFail || badUrl ? (
+                    <span style={{ color: "#ef4444", fontSize: 12 }}>✕</span>
+                  ) : (
+                    <span style={{ color: isCover ? "#50A0FA" : "#4a5568" }}>{idx + 1}</span>
+                  )}
+                </div>
+
+                {/* input */}
+                <div className="flex-1 relative">
+                  <input
+                    type="text"
+                    value={val}
+                    onChange={(e) => setUrl(idx, e.target.value)}
+                    placeholder={isCover ? "Cover photo URL — https://..." : `Photo ${idx + 1} URL`}
+                    className={iClass}
+                    style={{
+                      ...iStyle,
+                      borderColor: isError
+                        ? "rgba(239,68,68,0.5)"
+                        : isCover && !hasVal
+                        ? "rgba(80,160,250,0.35)"
+                        : "rgba(80,160,250,0.18)",
+                      fontSize: 11,
+                      paddingTop: 7,
+                      paddingBottom: 7,
+                    }}
                   />
-                ) : (
-                  <span style={{ color: isCover ? "#50A0FA" : "#4a5568" }}>{idx + 1}</span>
-                )}
+                  {isCover && !hasVal && (
+                    <span
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-semibold px-1.5 py-0.5 rounded"
+                      style={{ background: "rgba(80,160,250,0.15)", color: "#50A0FA" }}
+                    >
+                      Cover
+                    </span>
+                  )}
+                  {dup && (
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] text-red-400">duplicate</span>
+                  )}
+                </div>
               </div>
 
-              {/* input */}
-              <div className="flex-1 relative">
-                <input
-                  type="text"
-                  value={val}
-                  onChange={(e) => setUrl(idx, e.target.value)}
-                  placeholder={isCover ? "Cover photo URL — https://..." : `Photo ${idx + 1} URL`}
-                  className={iClass}
-                  style={{
-                    ...iStyle,
-                    borderColor: dup
-                      ? "rgba(239,68,68,0.5)"
-                      : isCover && !hasVal
-                      ? "rgba(80,160,250,0.35)"
-                      : "rgba(80,160,250,0.18)",
-                    fontSize: 11,
-                    paddingTop: 7,
-                    paddingBottom: 7,
-                  }}
-                />
-                {isCover && !hasVal && (
-                  <span
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] font-semibold px-1.5 py-0.5 rounded"
-                    style={{ background: "rgba(80,160,250,0.15)", color: "#50A0FA" }}
-                  >
-                    Cover
-                  </span>
-                )}
-                {dup && (
-                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] text-red-400">
-                    duplicate
-                  </span>
-                )}
-              </div>
+              {/* per-slot error hint */}
+              {badUrl && (
+                <p className="text-[10px] text-red-400 mt-0.5 ml-11">Must be a valid https:// URL</p>
+              )}
+              {!badUrl && imgFail && (
+                <p className="text-[10px] text-red-400 mt-0.5 ml-11">URL did not load as an image</p>
+              )}
             </div>
           );
         })}
@@ -190,8 +234,9 @@ function AddProduct() {
   };
 
   const [form, setForm]       = useState(emptyForm);
-  const [urls, setUrls]       = useState(Array(MAX_IMAGES).fill(""));
-  const [imgError, setImgError] = useState("");
+  const [urls, setUrls]           = useState(Array(MAX_IMAGES).fill(""));
+  const [imgError, setImgError]   = useState("");
+  const [imgLoadErrors, setImgLoadErrors] = useState(new Set());
   const [message, setMessage] = useState(null);
   const [saving, setSaving]   = useState(false);
   const [categories, setCategories] = useState([]);
@@ -219,6 +264,19 @@ function AddProduct() {
     const filled = urls.map((u) => u.trim()).filter(Boolean);
     if (filled.length === 0) {
       setImgError("At least one image URL is required.");
+      return;
+    }
+
+    // all filled URLs must be valid http/https
+    const badFormat = filled.filter(u => !isValidHttpUrl(u));
+    if (badFormat.length > 0) {
+      setImgError("All image URLs must start with https:// or http://");
+      return;
+    }
+
+    // none may have failed to load as an image
+    if (imgLoadErrors.size > 0) {
+      setImgError("One or more URLs did not load as images. Fix or remove them.");
       return;
     }
 
@@ -343,6 +401,7 @@ function AddProduct() {
           <ImageURLManager
             urls={urls}
             onChange={handleUrlChange}
+            onLoadErrors={setImgLoadErrors}
             error={imgError}
           />
         </div>

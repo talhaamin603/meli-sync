@@ -253,7 +253,7 @@ def _add_one(data: ProductInput, session: Session,
             images=json.dumps(imgs) if imgs else None,
             amazon_price_usd=data.amazon_price_usd,
             converted_price_cop=cop,
-            stock=data.stock, is_prime=data.is_prime,
+            stock=data.stock, initial_stock=data.stock, is_prime=data.is_prime,
             status="blocked", block_reason=result["reason"],
         )
         session.add(product)
@@ -267,7 +267,7 @@ def _add_one(data: ProductInput, session: Session,
         images=json.dumps(imgs) if imgs else None,
         amazon_price_usd=data.amazon_price_usd,
         converted_price_cop=cop,
-        stock=data.stock, is_prime=data.is_prime,
+        stock=data.stock, initial_stock=data.stock, is_prime=data.is_prime,
         category_id=data.category_id,
         status="pending",
     )
@@ -352,18 +352,16 @@ def get_products(session: Session = Depends(get_session)):
 
 @router.post("/admin/recalculate-prices")
 def recalculate_prices(session: Session = Depends(get_session)):
-    """Recalculate converted_price_cop for all products that have 0 or null COP price."""
+    """Recalculate converted_price_cop for ALL products using current margin rules."""
     products = session.exec(
         select(Product).where(Product.amazon_price_usd > 0)
     ).all()
-    updated = 0
     for p in products:
-        if not p.converted_price_cop or p.converted_price_cop == 0:
-            p.converted_price_cop = _calc_cop(p.amazon_price_usd, session)
-            session.add(p)
-            updated += 1
+        p.converted_price_cop = _calc_cop(p.amazon_price_usd, session)
+        p.updated_at = datetime.utcnow()
+        session.add(p)
     session.commit()
-    return {"updated": updated, "total": len(products)}
+    return {"updated": len(products), "total": len(products)}
 
 
 @router.get("/products/{asin}")
@@ -612,7 +610,7 @@ def get_margin_rules(session: Session = Depends(get_session)):
 
 @router.put("/margin-rules")
 def update_margin_rules(rules: List[MarginRuleInput], session: Session = Depends(get_session)):
-    """Replace all margin rules with the submitted list."""
+    """Replace all margin rules and recalculate prices for all existing products."""
     existing = session.exec(select(MarginRule)).all()
     for r in existing:
         session.delete(r)
@@ -624,5 +622,14 @@ def update_margin_rules(rules: List[MarginRuleInput], session: Session = Depends
             sort_order=r.sort_order,
         ))
     session.commit()
+
+    # Recalculate converted_price_cop for every product using the new rules
+    products = session.exec(select(Product).where(Product.amazon_price_usd > 0)).all()
+    for p in products:
+        p.converted_price_cop = _calc_cop(p.amazon_price_usd, session)
+        p.updated_at = datetime.utcnow()
+        session.add(p)
+    session.commit()
+
     updated = session.exec(select(MarginRule).order_by(MarginRule.sort_order)).all()
-    return {"rules": updated}
+    return {"rules": updated, "repriced": len(products)}

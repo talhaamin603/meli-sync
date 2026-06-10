@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
-import { getMarginRules, updateMarginRules, getExchangeRate } from "../api.js";
+import { getMarginRules, updateMarginRules, getExchangeRate, recalculatePrices } from "../api.js";
 
 const SHIPPING = 8;
 const INSURANCE = 5;
 
 function calcML(amazonUsd, markupPct, rate) {
-  const afterMarkup = amazonUsd * (1 + markupPct / 100);
+  const profit = amazonUsd * (markupPct / 100);
+  const afterMarkup = amazonUsd + profit;
   const total = afterMarkup + SHIPPING + INSURANCE;
-  return { mlUsd: total, mlCop: Math.round(total * rate / 100) * 100 };
+  return { mlUsd: total, mlCop: Math.round(total * rate / 100) * 100, profit };
 }
 
 export default function MarginConfig() {
@@ -19,6 +20,8 @@ export default function MarginConfig() {
   const [rate, setRate]           = useState(null);
   const [preview, setPreview]     = useState("");
   const [confirm, setConfirm]     = useState(null); // { type: "add", afterIdx } | { type: "remove", idx }
+  const [repricing, setRepricing] = useState(false);
+  const [repriceDone, setRepriceDone] = useState(null); // number of products updated
 
   useEffect(() => {
     Promise.all([getMarginRules(), getExchangeRate()])
@@ -124,6 +127,11 @@ export default function MarginConfig() {
     for (const r of rules) {
       if (price >= (parseFloat(r.min_price) || 0) && price <= (parseFloat(r.max_price) || 0)) return r;
     }
+    // No exact match — round up to the first rule whose min is above the price
+    for (const r of rules) {
+      if ((parseFloat(r.min_price) || 0) > price) return r;
+    }
+    // Price is above all ranges — use the last rule
     return rules[rules.length - 1] || null;
   }
 
@@ -392,23 +400,42 @@ export default function MarginConfig() {
           </div>
 
           {previewCalc && previewRule && (
-            <div className="flex items-center gap-5 flex-wrap">
+            <div className="flex flex-col gap-2 mt-3 w-full">
+              {/* Rule matched */}
               <div className="text-[11px] text-[#6b7785]">
                 Rule matched: <span className="text-white font-semibold">
                   ${previewRule.min_price}–${previewRule.max_price} → {previewRule.markup_pct}% markup
                 </span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] text-[#6b7785]">ML Price:</span>
-                <span className="text-lg font-black" style={{ color: "#50A0FA" }}>
-                  ${previewCalc.mlUsd.toFixed(2)}
-                </span>
-                <span className="text-sm text-[#6b7785]">
-                  / {previewCalc.mlCop.toLocaleString()} COP
-                </span>
-              </div>
-              <div className="text-[11px] text-green-400 font-semibold">
-                +${(previewCalc.mlUsd - previewPrice).toFixed(2)} profit
+              {/* Breakdown */}
+              <div className="rounded-lg px-4 py-3 text-[12px] leading-relaxed"
+                style={{ background: "rgba(80,160,250,0.04)", border: "1px solid rgba(80,160,250,0.1)" }}>
+                <div className="grid gap-1" style={{ gridTemplateColumns: "auto 1fr" }}>
+                  <span className="text-[#6b7785] pr-4">Amazon price</span>
+                  <span className="text-white">${previewPrice.toFixed(2)}</span>
+
+                  <span className="text-[#6b7785] pr-4">Markup ({previewRule.markup_pct}%)</span>
+                  <span className="text-green-400 font-semibold">+${previewCalc.profit.toFixed(2)}</span>
+
+                  <span className="text-[#6b7785] pr-4">Shipping</span>
+                  <span className="text-[#a0adbb]">+${SHIPPING.toFixed(2)}</span>
+
+                  <span className="text-[#6b7785] pr-4">Insurance</span>
+                  <span className="text-[#a0adbb]">+${INSURANCE.toFixed(2)}</span>
+
+                  <div className="col-span-2 my-1" style={{ borderTop: "1px solid rgba(80,160,250,0.15)" }} />
+
+                  <span className="text-white font-semibold pr-4">Final price (USD)</span>
+                  <span className="font-bold" style={{ color: "#50A0FA" }}>${previewCalc.mlUsd.toFixed(2)}</span>
+
+                  <span className="text-white font-semibold pr-4">Final price (COP)</span>
+                  <span className="font-bold" style={{ color: "#50A0FA" }}>{previewCalc.mlCop.toLocaleString()}</span>
+
+                  <div className="col-span-2 my-1" style={{ borderTop: "1px solid rgba(80,160,250,0.15)" }} />
+
+                  <span className="text-green-400 font-bold pr-4">Our profit</span>
+                  <span className="text-green-400 font-bold">+${previewCalc.profit.toFixed(2)}</span>
+                </div>
               </div>
             </div>
           )}
@@ -423,8 +450,41 @@ export default function MarginConfig() {
         </div>
       )}
 
-      {/* Save */}
-      <div className="flex justify-end">
+      {/* Save + Reprice */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        {/* Reprice all products */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={async () => {
+              setRepricing(true);
+              setRepriceDone(null);
+              try {
+                const res = await recalculatePrices();
+                setRepriceDone(res.updated ?? 0);
+                setTimeout(() => setRepriceDone(null), 4000);
+              } catch {
+                setError("Failed to recalculate prices. Please try again.");
+              } finally {
+                setRepricing(false);
+              }
+            }}
+            disabled={repricing}
+            className="px-4 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-60"
+            style={{
+              background: repricing ? "rgba(245,158,11,0.08)" : "rgba(245,158,11,0.12)",
+              color: "#f59e0b",
+              border: "1px solid rgba(245,158,11,0.3)",
+            }}
+          >
+            {repricing ? "Recalculating…" : "Apply Rules to All Products"}
+          </button>
+          {repriceDone !== null && (
+            <span className="text-[12px] font-semibold text-green-400">
+              ✓ {repriceDone} products updated
+            </span>
+          )}
+        </div>
+
         <button onClick={handleSave} disabled={saving || saved}
           className="px-6 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-60"
           style={{

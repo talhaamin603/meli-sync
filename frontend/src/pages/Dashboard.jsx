@@ -1,7 +1,22 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
-import { getProducts, getExchangeRate, getSyncHistory } from "../api.js";
+import { getProducts, getExchangeRate, getSyncHistory, getMarginRules } from "../api.js";
+
+const SHIPPING = 8;
+const INSURANCE = 5;
+
+function calcPrice(amazonUsd, rules, rate) {
+  if (!rules.length || !rate) return null;
+  let rule = rules.find(r => r.min_price <= amazonUsd && amazonUsd <= r.max_price)
+    || rules.find(r => r.min_price > amazonUsd)
+    || rules[rules.length - 1];
+  if (!rule) return null;
+  const profit = amazonUsd * (rule.markup_pct / 100);
+  const mlUsd  = amazonUsd + profit + SHIPPING + INSURANCE;
+  const mlCop  = Math.round(mlUsd * rate / 100) * 100;
+  return { mlUsd, mlCop, profit, markupPct: rule.markup_pct };
+}
 
 /* ─── Status badge ─────────────────────────────────────────── */
 function DashboardStatusBadge({ status, stock }) {
@@ -166,6 +181,7 @@ function Dashboard() {
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState("all");
   const [exchangeRate, setExchangeRate] = useState(null);
+  const [rules, setRules] = useState([]);
   const [syncHistory, setSyncHistory] = useState([]);
   const [sortCol, setSortCol] = useState(null);
   const [sortDir, setSortDir] = useState("asc");
@@ -187,20 +203,19 @@ function Dashboard() {
     return () => clearInterval(id);
   }, []);
 
-  // Load products and exchange rate on mount
+  // Load products, exchange rate, margin rules and sync history on mount
   useEffect(() => {
-    getProducts()
-      .then((data) => {
-        const list = Array.isArray(data)
-          ? data
-          : (data.products || data.items || []);
+    Promise.all([getProducts(), getExchangeRate(), getMarginRules()])
+      .then(([productsData, rateData, rulesData]) => {
+        const list = Array.isArray(productsData)
+          ? productsData
+          : (productsData.products || productsData.items || []);
         setProducts(list);
+        setExchangeRate(rateData.usd_to_cop || null);
+        setRules(rulesData.rules || []);
       })
       .catch(() => setError(t("errorLoading")))
       .finally(() => setLoading(false));
-    getExchangeRate()
-      .then((data) => setExchangeRate(data.usd_to_cop))
-      .catch(() => {});
     getSyncHistory()
       .then((data) => setSyncHistory(Array.isArray(data) ? data : []))
       .catch(() => {});
@@ -261,10 +276,8 @@ function Dashboard() {
     else if (sortCol === "ml")    { av = (a.converted_price_cop || 0) / rate; bv = (b.converted_price_cop || 0) / rate; }
     else if (sortCol === "stock") { av = a.stock || 0;                   bv = b.stock || 0; }
     else if (sortCol === "margin") {
-      const aml = (a.converted_price_cop || 0) / rate;
-      const bml = (b.converted_price_cop || 0) / rate;
-      av = aml - (a.amazon_price_usd || 0);
-      bv = bml - (b.amazon_price_usd || 0);
+      av = calcPrice(a.amazon_price_usd || 0, rules, exchangeRate || 1)?.profit ?? 0;
+      bv = calcPrice(b.amazon_price_usd || 0, rules, exchangeRate || 1)?.profit ?? 0;
     }
     else if (sortCol === "status")  { av = getStatusOrder(a); bv = getStatusOrder(b); }
     else if (sortCol === "updated") { av = a.updated_at || a.created_at || ""; bv = b.updated_at || b.created_at || ""; }
@@ -691,21 +704,18 @@ function Dashboard() {
         {/* Box 4 — Average Margin */}
         {(() => {
           const rate = exchangeRate || 1;
-          const withPricing = products.filter(p => p.converted_price_cop > 0 && p.amazon_price_usd > 0);
-          const calcMargin = p => {
-            const ml = p.converted_price_cop / rate;
-            return ((ml - p.amazon_price_usd) / ml) * 100;
-          };
+          const withPricing = products.filter(p => p.amazon_price_usd > 0);
+          const getProfitPct = p => calcPrice(p.amazon_price_usd, rules, rate)?.markupPct ?? 0;
           const avgMargin = withPricing.length > 0
-            ? withPricing.reduce((sum, p) => sum + calcMargin(p), 0) / withPricing.length
+            ? withPricing.reduce((sum, p) => sum + getProfitPct(p), 0) / withPricing.length
             : null;
 
           // Compare recent (last 7 days) avg vs older avg for the arrow
           const week = 7 * 24 * 60 * 60 * 1000;
           const recent = withPricing.filter(p => Date.now() - new Date(p.created_at).getTime() <= week);
           const older  = withPricing.filter(p => Date.now() - new Date(p.created_at).getTime() >  week);
-          const recentAvg = recent.length > 0 ? recent.reduce((s, p) => s + calcMargin(p), 0) / recent.length : null;
-          const olderAvg  = older.length  > 0 ? older.reduce((s, p)  => s + calcMargin(p), 0) / older.length  : null;
+          const recentAvg = recent.length > 0 ? recent.reduce((s, p) => s + getProfitPct(p), 0) / recent.length : null;
+          const olderAvg  = older.length  > 0 ? older.reduce((s, p)  => s + getProfitPct(p), 0) / older.length  : null;
           const trend = recentAvg !== null && olderAvg !== null ? recentAvg - olderAvg : 0;
           const trendUp   = trend > 0.5;
           const trendDown = trend < -0.5;
@@ -906,13 +916,10 @@ function Dashboard() {
             <tbody>
               {pageProducts.map((p) => {
                 const amazonUsd = Number(p.amazon_price_usd || 0);
-                const mlUsd = exchangeRate && p.converted_price_cop
-                  ? p.converted_price_cop / exchangeRate
-                  : null;
-                const margin = mlUsd !== null ? mlUsd - amazonUsd : null;
-                const marginPct = margin !== null && mlUsd > 0
-                  ? (margin / mlUsd) * 100
-                  : null;
+                const calc = calcPrice(amazonUsd, rules, exchangeRate);
+                const mlUsd    = calc?.mlUsd    ?? null;
+                const profit   = calc?.profit   ?? null;
+                const profitPct = calc ? calc.markupPct : null;
 
                 return (
                   <tr
@@ -979,28 +986,49 @@ function Dashboard() {
 
                     {/* Amazon Price */}
                     <td className="px-4 py-3 text-right">
-                      <span className="text-[#c8d0db] font-bold text-[13px]">
-                        ${amazonUsd.toFixed(2)}
-                      </span>
+                      <div className="leading-tight">
+                        <div className="text-[#c8d0db] font-bold text-[13px]">${amazonUsd.toFixed(2)}</div>
+                        {exchangeRate && (
+                          <div className="text-[10px] text-[#6b7785]">
+                            {(Math.round(amazonUsd * exchangeRate / 100) * 100).toLocaleString()} COP
+                          </div>
+                        )}
+                      </div>
                     </td>
 
-                    {/* ML Price (in USD) */}
+                    {/* ML Price */}
                     <td className="px-4 py-3 text-right">
-                      <span className="font-bold text-[13px]" style={{ color: "#50A0FA" }}>
-                        {mlUsd !== null ? `$${mlUsd.toFixed(2)}` : "—"}
-                      </span>
+                      {mlUsd !== null ? (
+                        <div className="leading-tight">
+                          <div className="font-bold text-[13px]" style={{ color: "#50A0FA" }}>${mlUsd.toFixed(2)}</div>
+                          {calc?.mlCop != null && (
+                            <div className="text-[10px] text-[#6b7785]">
+                              {calc.mlCop.toLocaleString()} COP
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-[#4a5568]">—</span>
+                      )}
                     </td>
 
                     {/* Margin */}
                     <td className="px-4 py-3 text-right">
-                      {margin !== null ? (
+                      {profit !== null ? (
                         <div className="leading-tight">
                           <div className="text-[13px] font-bold text-green-400">
-                            +${margin.toFixed(2)}
+                            +${profit.toFixed(2)}
                           </div>
-                          <div className="text-[10px] text-[#6b7785]">
-                            {marginPct.toFixed(1)}%
-                          </div>
+                          {exchangeRate && (
+                            <div className="text-[10px] text-green-600">
+                              +{(Math.round(profit * exchangeRate / 100) * 100).toLocaleString()} COP
+                            </div>
+                          )}
+                          {profitPct !== null && (
+                            <div className="text-[10px] text-[#6b7785]">
+                              {profitPct.toFixed(1)}% markup
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <span className="text-[#4a5568]">—</span>

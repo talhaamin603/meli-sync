@@ -1,7 +1,22 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { getProducts, syncProduct, deleteProduct, getExchangeRate } from "../api.js";
+import { getProducts, syncProduct, deleteProduct, getExchangeRate, getMarginRules } from "../api.js";
+
+const SHIPPING = 8;
+const INSURANCE = 5;
+
+function calcPrice(amazonUsd, rules, rate) {
+  if (!rules.length || !rate) return null;
+  let rule = rules.find(r => r.min_price <= amazonUsd && amazonUsd <= r.max_price)
+    || rules.find(r => r.min_price > amazonUsd)
+    || rules[rules.length - 1];
+  if (!rule) return null;
+  const profit = amazonUsd * (rule.markup_pct / 100);
+  const mlUsd  = amazonUsd + profit + SHIPPING + INSURANCE;
+  const mlCop  = Math.round(mlUsd * rate / 100) * 100;
+  return { mlUsd, mlCop, profit, markupPct: rule.markup_pct };
+}
 
 function StatusBadge({ status, stock, t }) {
   if (stock === 0) {
@@ -83,19 +98,19 @@ function Products() {
   const [confirmDelete, setConfirmDelete]   = useState(null); // product object
   const [deleting, setDeleting]             = useState(false);
   const [exchangeRate, setExchangeRate]     = useState(null);
+  const [rules, setRules]                   = useState([]);
   const [statusSort, setStatusSort]         = useState(null); // null | "asc" | "desc"
 
   useEffect(() => {
-    getProducts()
-      .then((data) => {
-        const list = Array.isArray(data) ? data : (data.products || data.items || []);
+    Promise.all([getProducts(), getExchangeRate(), getMarginRules()])
+      .then(([productsData, rateData, rulesData]) => {
+        const list = Array.isArray(productsData) ? productsData : (productsData.products || productsData.items || []);
         setAll(list);
+        setExchangeRate(rateData.usd_to_cop || null);
+        setRules(rulesData.rules || []);
       })
       .catch(() => setError(t("errorLoading")))
       .finally(() => setLoading(false));
-    getExchangeRate()
-      .then((data) => setExchangeRate(data.usd_to_cop))
-      .catch(() => {});
     // eslint-disable-next-line
   }, []);
 
@@ -337,13 +352,10 @@ function Products() {
                 const url = meliUrl(p);
                 const isSyncing = syncingId === p.id;
                 const amazonUsd = Number(p.amazon_price_usd || 0);
-                const mlUsd = exchangeRate && p.converted_price_cop
-                  ? p.converted_price_cop / exchangeRate
-                  : null;
-                const margin = mlUsd !== null ? mlUsd - amazonUsd : null;
-                const marginPct = margin !== null && mlUsd > 0
-                  ? (margin / mlUsd) * 100
-                  : null;
+                const calc = calcPrice(amazonUsd, rules, exchangeRate);
+                const mlUsd    = calc?.mlUsd    ?? null;
+                const profit   = calc?.profit   ?? null;
+                const profitPct = calc && amazonUsd > 0 ? calc.markupPct : null;
                 return (
                   <tr
                     key={p.id || p.asin}
@@ -394,28 +406,49 @@ function Products() {
 
                     {/* Amazon Price */}
                     <td className="p-3 text-right">
-                      <span className="text-[#c8d0db] font-bold text-[13px]">
-                        ${amazonUsd.toFixed(2)}
-                      </span>
+                      <div className="leading-tight">
+                        <div className="text-[#c8d0db] font-bold text-[13px]">${amazonUsd.toFixed(2)}</div>
+                        {exchangeRate && (
+                          <div className="text-[10px] text-[#6b7785]">
+                            {(Math.round(amazonUsd * exchangeRate / 100) * 100).toLocaleString()} COP
+                          </div>
+                        )}
+                      </div>
                     </td>
 
                     {/* ML Price */}
                     <td className="p-3 text-right">
-                      <span className="font-bold text-[13px]" style={{ color: "#50A0FA" }}>
-                        {mlUsd !== null ? `$${mlUsd.toFixed(2)}` : "—"}
-                      </span>
+                      {mlUsd !== null ? (
+                        <div className="leading-tight">
+                          <div className="font-bold text-[13px]" style={{ color: "#50A0FA" }}>${mlUsd.toFixed(2)}</div>
+                          {calc?.mlCop != null && (
+                            <div className="text-[10px] text-[#6b7785]">
+                              {calc.mlCop.toLocaleString()} COP
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-[#4a5568]">—</span>
+                      )}
                     </td>
 
                     {/* Margin */}
                     <td className="p-3 text-right">
-                      {margin !== null ? (
+                      {profit !== null ? (
                         <div className="leading-tight">
                           <div className="text-[13px] font-bold text-green-400">
-                            +${margin.toFixed(2)}
+                            +${profit.toFixed(2)}
                           </div>
-                          <div className="text-[10px] text-[#6b7785]">
-                            {marginPct.toFixed(1)}%
-                          </div>
+                          {exchangeRate && (
+                            <div className="text-[10px] text-green-600">
+                              +{(Math.round(profit * exchangeRate / 100) * 100).toLocaleString()} COP
+                            </div>
+                          )}
+                          {profitPct !== null && (
+                            <div className="text-[10px] text-[#6b7785]">
+                              {profitPct.toFixed(1)}% markup
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <span className="text-[#4a5568]">—</span>

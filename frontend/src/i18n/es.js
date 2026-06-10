@@ -14,7 +14,6 @@ export default {
     addProduct: "Agregar Producto",
     importByAsin: "Importar Amazon",
     blacklist: "Lista Negra",
-    settings: "Configuración",
     logout: "Cerrar sesión",
   
     // dashboard
@@ -71,16 +70,7 @@ export default {
     addTerm: "Agregar término",
     noTerms: "No hay términos.",
   
-    // settings
-    settingsTitle: "Configuración",
-    settingsSubtitle: "Ajustes de precios y sincronización",
-    shippingUsd: "Costo de envío (USD)",
-    marginPct: "Margen de ganancia (%)",
-    syncHours: "Frecuencia de sincronización (horas)",
-    save: "Guardar",
-    saved: "¡Guardado!",
-    loadingSettings: "Cargando configuración...",
-  
+
     // amazon import
     importAsinsTitle: "Importar desde Amazon",
     importAsinsSubtitle: "Pega uno o varios ASINs (o links de Amazon) para importar",

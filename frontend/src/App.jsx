@@ -8,7 +8,6 @@ import AddProduct from "./pages/AddProduct.jsx";
 import AddProductHub from "./pages/AddProductHub.jsx";
 import SearchAmazon from "./pages/SearchAmazon.jsx";
 import Blacklist from "./pages/Blacklist.jsx";
-import Settings from "./pages/Settings.jsx";
 import ImportAsins from "./pages/ImportAsins.jsx";
 import RecycleBin from "./pages/RecycleBin.jsx";
 import MarginConfig from "./pages/MarginConfig.jsx";
@@ -32,7 +31,6 @@ function App() {
         <Route path="add/search" element={<SearchAmazon />} />
         <Route path="import" element={<ImportAsins />} />
         <Route path="blacklist" element={<Blacklist />} />
-        <Route path="settings" element={<Settings />} />
         <Route path="recycle-bin" element={<RecycleBin />} />
         <Route path="margin-config" element={<MarginConfig />} />
         <Route path="categories" element={<Categories />} />
