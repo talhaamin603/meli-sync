@@ -1,22 +1,16 @@
 """
 app/services/pricing.py
-The single source of truth for how Mercado Libre prices are calculated.
 
-Formula (per client requirement):
-    subtotal_usd = amazon_price + shipping + $5 insurance
-    with_margin  = subtotal_usd * (1 + margin_pct/100)
-    final_cop    = with_margin * usd_to_cop_rate
-    final_cop    = rounded up to nearest 100 COP for clean display
+How the final price is calculated (step by step):
 
-IMPORTANT NOTE ON THE FORMULA:
-The client's formula multiplies (product + shipping + insurance) by the
-margin. This means profit margin is applied to shipping and insurance too,
-not just the product cost. That is unusual - most resellers apply margin
-only to the product. Building it exactly as specified, but worth
-clarifying with the client before going live.
+    Step 1:  amazon price + markup price   = selling price
+    Step 2:  selling price + shipping cost + insurance = final price (USD)
+    Step 3:  final price (USD) x exchange rate         = final price (COP)
 
-All settings (shipping_usd, margin_pct, exchange_rate) come from the
-Setting table so the dashboard can change them without code changes.
+Example with $20 Amazon price and 100% markup:
+    Step 1:  $20 + $20 (100% of $20)  = $40  (selling price)
+    Step 2:  $40 + $8 + $5            = $53  (final price USD)
+    Step 3:  $53 x exchange rate      = final price in COP (rounded to nearest 100)
 """
 from datetime import datetime, timedelta
 import httpx
@@ -61,7 +55,7 @@ def get_tiered_markup(amazon_price_usd: float, session: Session) -> float:
     if not rules:
         return get_margin_pct(session)
     for rule in rules:
-        if rule.min_price <= amazon_price_usd < rule.max_price:
+        if rule.min_price <= amazon_price_usd <= rule.max_price:
             return rule.markup_pct
     # price is at or above the last rule's max — use the last rule
     return rules[-1].markup_pct
@@ -113,21 +107,22 @@ def calculate_final_cop(
     usd_to_cop_rate: float,
 ) -> dict:
     """
-    The exact formula. Returns a dict with the full breakdown for logging
-    and dashboard display. Always use this function - never inline the math.
+    Step 1: amazon price + markup price   = selling price
+    Step 2: selling price + shipping + insurance = final price (USD)
+    Step 3: final price (USD) x exchange rate    = final price (COP)
     """
-    subtotal_usd = amazon_price_usd + shipping_usd + INSURANCE_USD
-    with_margin_usd = subtotal_usd * (1 + margin_pct / 100)
+    after_markup_usd = amazon_price_usd * (1 + margin_pct / 100)
+    with_margin_usd = after_markup_usd + shipping_usd + INSURANCE_USD
     raw_cop = with_margin_usd * usd_to_cop_rate
 
-    # round UP to nearest 100 COP - cleaner price for Colombian buyers
+    # round to nearest 100 COP - cleaner price for Colombian buyers
     final_cop = round(raw_cop / 100) * 100
 
     return {
         "amazon_usd": round(amazon_price_usd, 2),
+        "after_markup_usd": round(after_markup_usd, 2),
         "shipping_usd": round(shipping_usd, 2),
         "insurance_usd": INSURANCE_USD,
-        "subtotal_usd": round(subtotal_usd, 2),
         "margin_pct": margin_pct,
         "with_margin_usd": round(with_margin_usd, 2),
         "exchange_rate": round(usd_to_cop_rate, 2),

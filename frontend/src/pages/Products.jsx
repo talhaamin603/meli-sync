@@ -302,13 +302,13 @@ function Products() {
         style={{ animation: "fadeUp 0.6s ease-out 0.2s backwards" }}
       >
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm" style={{ minWidth: "950px" }}>
             <thead>
               <tr
                 className="text-[11px] uppercase tracking-wider text-[#6b7785]"
                 style={{ background: "rgba(80,160,250,0.04)" }}
               >
-                <th className="p-3 font-medium w-16"></th>
+                <th className="p-3 font-medium" style={{ width: "72px", minWidth: "72px" }}></th>
                 <th className="text-left p-3 font-medium">{t("title")}</th>
                 <th className="text-left p-3 font-medium">Category</th>
                 <th className="text-right p-3 font-medium">Amazon Price</th>
@@ -350,7 +350,7 @@ function Products() {
                     className="hover:bg-[#50A0FA]/[0.04] transition-colors"
                     style={{ borderTop: "1px solid rgba(80,160,250,0.08)" }}
                   >
-                    <td className="p-3">
+                    <td className="p-3" style={{ width: "72px", minWidth: "72px" }}>
                       {p.image_url
                         ? <img src={p.image_url} alt="" className="w-12 h-12 rounded-lg object-cover" style={{ background: "#1f2937" }} />
                         : <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ background: "#1a2233" }}>
