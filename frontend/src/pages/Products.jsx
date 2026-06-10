@@ -2,21 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { getProducts, syncProduct, deleteProduct, getExchangeRate, getMarginRules } from "../api.js";
-
-const SHIPPING = 8;
-const INSURANCE = 5;
-
-function calcPrice(amazonUsd, rules, rate) {
-  if (!rules.length || !rate) return null;
-  let rule = rules.find(r => r.min_price <= amazonUsd && amazonUsd <= r.max_price)
-    || rules.find(r => r.min_price > amazonUsd)
-    || rules[rules.length - 1];
-  if (!rule) return null;
-  const profit = amazonUsd * (rule.markup_pct / 100);
-  const mlUsd  = amazonUsd + profit + SHIPPING + INSURANCE;
-  const mlCop  = Math.round(mlUsd * rate / 100) * 100;
-  return { mlUsd, mlCop, profit, markupPct: rule.markup_pct };
-}
+import { calcPrice } from "../utils/pricing.js";
 
 function StatusBadge({ status, stock, t }) {
   if (stock === 0) {

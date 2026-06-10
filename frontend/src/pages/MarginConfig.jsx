@@ -1,15 +1,6 @@
 import { useState, useEffect } from "react";
 import { getMarginRules, updateMarginRules, getExchangeRate, recalculatePrices } from "../api.js";
-
-const SHIPPING = 8;
-const INSURANCE = 5;
-
-function calcML(amazonUsd, markupPct, rate) {
-  const profit = amazonUsd * (markupPct / 100);
-  const afterMarkup = amazonUsd + profit;
-  const total = afterMarkup + SHIPPING + INSURANCE;
-  return { mlUsd: total, mlCop: Math.round(total * rate / 100) * 100, profit };
-}
+import { calcPrice, calcML, SHIPPING, INSURANCE } from "../utils/pricing.js";
 
 export default function MarginConfig() {
   const [rules, setRules]         = useState([]);
@@ -123,21 +114,8 @@ export default function MarginConfig() {
     }
   }
 
-  function matchingRule(price) {
-    for (const r of rules) {
-      if (price >= (parseFloat(r.min_price) || 0) && price <= (parseFloat(r.max_price) || 0)) return r;
-    }
-    // No exact match — round up to the first rule whose min is above the price
-    for (const r of rules) {
-      if ((parseFloat(r.min_price) || 0) > price) return r;
-    }
-    // Price is above all ranges — use the last rule
-    return rules[rules.length - 1] || null;
-  }
-
   const previewPrice = parseFloat(preview);
-  const previewRule  = !isNaN(previewPrice) && previewPrice > 0 ? matchingRule(previewPrice) : null;
-  const previewCalc  = previewRule && rate ? calcML(previewPrice, parseFloat(previewRule.markup_pct) || 0, rate) : null;
+  const previewCalc  = !isNaN(previewPrice) && previewPrice > 0 && rate ? calcPrice(previewPrice, rules, rate) : null;
 
   if (loading) return (
     <div className="flex items-center gap-3 p-4 text-[#a0adbb] text-sm">
@@ -399,12 +377,12 @@ export default function MarginConfig() {
             />
           </div>
 
-          {previewCalc && previewRule && (
+          {previewCalc && (
             <div className="flex flex-col gap-2 mt-3 w-full">
               {/* Rule matched */}
               <div className="text-[11px] text-[#6b7785]">
                 Rule matched: <span className="text-white font-semibold">
-                  ${previewRule.min_price}–${previewRule.max_price} → {previewRule.markup_pct}% markup
+                  ${previewCalc.rule.min_price}–${previewCalc.rule.max_price} → {previewCalc.rule.markup_pct}% markup
                 </span>
               </div>
               {/* Breakdown */}
@@ -414,7 +392,7 @@ export default function MarginConfig() {
                   <span className="text-[#6b7785] pr-4">Amazon price</span>
                   <span className="text-white">${previewPrice.toFixed(2)}</span>
 
-                  <span className="text-[#6b7785] pr-4">Markup ({previewRule.markup_pct}%)</span>
+                  <span className="text-[#6b7785] pr-4">Markup ({previewCalc.rule.markup_pct}%)</span>
                   <span className="text-green-400 font-semibold">+${previewCalc.profit.toFixed(2)}</span>
 
                   <span className="text-[#6b7785] pr-4">Shipping</span>
