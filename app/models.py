@@ -1,37 +1,37 @@
-"""All database tables for the project."""
 from sqlmodel import SQLModel, Field
 from typing import Optional
 from datetime import datetime
 
 
 class Product(SQLModel, table=True):
-    """One Amazon product we have fetched."""
     id: Optional[int] = Field(default=None, primary_key=True)
     asin: str = Field(index=True, unique=True)
     title: str
     description: Optional[str] = None
     image_url: Optional[str] = None
-    images: Optional[str] = None          # JSON array of all image URLs
+    images: Optional[str] = None          # JSON array of image URLs
     amazon_price_usd: float = 0.0
-    converted_price_cop: float = 0.0   # filled in Module 2
+    converted_price_cop: float = 0.0
     stock: int = 0
     initial_stock: Optional[int] = None
     times_ordered: int = 0
     is_prime: bool = False
-    amazon_category: Optional[str] = None  # full category path from Amazon
+    rating: float = 0.0
+    total_ratings: int = 0
+    whats_in_the_box: Optional[str] = None
+    amazon_category: Optional[str] = None  # stores brand name from Amazon
     category_id: Optional[int] = Field(default=None, foreign_key="category.id")
-    meli_item_id: Optional[str] = None  # filled in Module 2
-    meli_category: Optional[str] = None  # filled in Module 2
-    last_synced_at: Optional[datetime] = None  # ✅ ADDED for Module 2
-    status: str = "pending"  # pending / blocked / published / failed
+    meli_item_id: Optional[str] = None
+    meli_category: Optional[str] = None
+    last_synced_at: Optional[datetime] = None
+    status: str = "pending"              # pending / blocked / published / failed
     block_reason: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-    deleted_at: Optional[datetime] = None  # set on soft-delete, None = active
+    deleted_at: Optional[datetime] = None  # None = active; set = soft-deleted
 
 
 class Category(SQLModel, table=True):
-    """Product category tree — supports unlimited depth via parent_id."""
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
     parent_id: Optional[int] = Field(default=None, foreign_key="category.id")
@@ -39,28 +39,21 @@ class Category(SQLModel, table=True):
 
 
 class BlacklistRule(SQLModel, table=True):
-    """One blacklisted brand or keyword."""
     id: Optional[int] = Field(default=None, primary_key=True)
-    rule_type: str = "brand"  # "brand" or "keyword"
+    rule_type: str = "brand"             # "brand" or "keyword"
     value: str = Field(index=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 class AuditLog(SQLModel, table=True):
-    """A record of every important action the system takes."""
     id: Optional[int] = Field(default=None, primary_key=True)
     timestamp: datetime = Field(default_factory=datetime.utcnow)
-    action: str          # "fetch", "blocked", "prime_filtered", etc.
+    action: str
     asin: Optional[str] = None
     detail: Optional[str] = None
 
 
-# ============================================================
-# MODULE 2 TABLES
-# ============================================================
-
 class MeliToken(SQLModel, table=True):
-    """Mercado Libre OAuth tokens - only one row"""
     id: Optional[int] = Field(default=None, primary_key=True)
     access_token: str
     refresh_token: str
@@ -69,7 +62,6 @@ class MeliToken(SQLModel, table=True):
 
 
 class ExchangeRate(SQLModel, table=True):
-    """Cached USD → COP exchange rate"""
     id: Optional[int] = Field(default=None, primary_key=True)
     base: str = "USD"
     target: str = "COP"
@@ -78,27 +70,24 @@ class ExchangeRate(SQLModel, table=True):
 
 
 class SyncHistory(SQLModel, table=True):
-    """Sync operation log - CORRECTED for Module 2"""
     id: Optional[int] = Field(default=None, primary_key=True)
-    sync_type: str = "daily"  # ✅ ADDED: "daily" or "manual"
+    sync_type: str = "daily"             # "daily" or "manual"
     started_at: datetime = Field(default_factory=datetime.utcnow)
-    finished_at: Optional[datetime] = None  # ✅ CHANGED from completed_at
+    finished_at: Optional[datetime] = None
     products_updated: int = 0
-    products_failed: int = 0  # ✅ CHANGED from failures
-    notes: str = ""  # ✅ ADDED
+    products_failed: int = 0
+    notes: str = ""
 
 
 class Setting(SQLModel, table=True):
-    """System settings (shipping, margins, etc.)"""
     id: Optional[int] = Field(default=None, primary_key=True)
     key: str = Field(index=True, unique=True)
     value: str = ""
 
 
 class MarginRule(SQLModel, table=True):
-    """Tiered markup rules: different % increase based on Amazon price range."""
     id: Optional[int] = Field(default=None, primary_key=True)
-    min_price: float = 0.0     # inclusive lower bound (USD)
-    max_price: float = 0.0     # exclusive upper bound (USD); last rule is inclusive
-    markup_pct: float = 100.0  # price increase percentage (100 = double the price)
-    sort_order: int = 0        # display / evaluation order
+    min_price: float = 0.0      # inclusive lower bound (USD)
+    max_price: float = 0.0      # exclusive upper bound; last rule is inclusive
+    markup_pct: float = 100.0
+    sort_order: int = 0

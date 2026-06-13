@@ -1,33 +1,38 @@
-"""
-app/routers/amazon.py
-Bulk-import products from Amazon by ASIN.
-
-Now also rejects products that came back without a price, since saving
-those would lead to selling at cost or below.
-"""
 import re
 import json
-import unicodedata
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlmodel import Session, select
 from app.database import get_session
-from app.models import Product, BlacklistRule, AuditLog
-from app.services.amazon import fetch_product, search_products, is_configured
-
-try:
-    from app.services.pricing import price_product_for_meli
-    HAS_PRICING = True
-except Exception as e:
-    print(f"[amazon] pricing service not available: {e}")
-    HAS_PRICING = False
-
+from app.models import Product
+from app.services.amazon import is_configured, fetch_product, search_products
+# from app.services.blacklist import BlacklistFilter
+from app.services.pricing import price_product_for_meli
 
 router = APIRouter(prefix="/api/amazon", tags=["amazon"])
 
 
 class ImportBody(BaseModel):
     asins: list[str]
+    category_id: int | None = None
+
+
+class PreviewProduct(BaseModel):
+    asin: str
+    name: str
+    brand: str
+    url: str
+    thumbnail: str
+    images: list[str]
+    rating: float
+    total_ratings: int
+    price: float
+    is_prime: bool
+    description: str = ""
+
+
+class ImportFromPreviewBody(BaseModel):
+    products: list[PreviewProduct]
     category_id: int | None = None
 
 
@@ -44,317 +49,6 @@ class AddFromSearchBody(BaseModel):
     category_id: int | None = None
 
 
-def _normalize_text(text: str) -> str:
-    if not text:
-        return ""
-    text = text.lower().strip()
-    text = "".join(
-        c for c in unicodedata.normalize("NFD", text)
-        if unicodedata.category(c) != "Mn"
-    )
-    return " ".join(text.split())
-
-
-def _blacklist_hit(text: str, terms: set) -> str | None:
-    clean = _normalize_text(text)
-    if not clean:
-        return None
-    tokens = clean.split()
-    for w in tokens:
-        if w in terms:
-            return w
-    for i in range(len(tokens) - 1):
-        if (p := f"{tokens[i]} {tokens[i + 1]}") in terms:
-            return p
-    for i in range(len(tokens) - 2):
-        if (p := f"{tokens[i]} {tokens[i + 1]} {tokens[i + 2]}") in terms:
-            return p
-    return None
-
-
-def _load_blacklist_set(session: Session) -> set:
-    s = set()
-    for rule in session.exec(select(BlacklistRule)).all():
-        n = _normalize_text(rule.value)
-        if n:
-            s.add(n)
-    return s
-
-
-def _safe_calculate_cop(usd_price: float, session: Session) -> float:
-    if not HAS_PRICING:
-        return 0.0
-    try:
-        breakdown = price_product_for_meli(usd_price, session)
-        return float(breakdown.get("final_cop", 0))
-    except Exception as e:
-        print(f"[amazon] COP calc skipped for ${usd_price}: {e}")
-        return 0.0
-
-
-@router.get("/status")
-def status():
-    return {
-        "configured": is_configured(),
-        "message": (
-            "Amazon RapidAPI conectado"
-            if is_configured()
-            else "Falta la configuración: agregar RAPIDAPI_KEY en .env"
-        ),
-    }
-
-
-@router.post("/import-asins")
-def import_asins(
-    body: ImportBody,
-    session: Session = Depends(get_session),
-):
-    if not is_configured():
-        raise HTTPException(
-            status_code=400,
-            detail="Amazon RapidAPI not configured. Set RAPIDAPI_KEY in .env",
-        )
-
-    if not body.asins:
-        return {"results": [], "summary": {"added": 0, "blocked": 0, "skipped": 0, "failed": 0}}
-
-    asins = [_extract_asin(a) for a in body.asins]
-    asins = [a for a in asins if a]
-    seen = set()
-    asins = [a for a in asins if not (a in seen or seen.add(a))]
-
-    terms = _load_blacklist_set(session)
-    results = []
-    summary = {"added": 0, "blocked": 0, "skipped": 0, "failed": 0}
-
-    for asin in asins:
-        existing = session.exec(
-            select(Product).where(Product.asin == asin)
-        ).first()
-        if existing:
-            results.append({"asin": asin, "status": "skipped",
-                            "reason": "Already exists in catalog"})
-            summary["skipped"] += 1
-            continue
-
-        product_data = fetch_product(asin)
-        if product_data is None:
-            results.append({"asin": asin, "status": "failed",
-                            "reason": "no se pudo obtener de Amazon"})
-            summary["failed"] += 1
-            continue
-
-        # NEW: Reject products without a usable price.
-        # If Amazon returns 0 (out of stock, unavailable, price hidden),
-        # we should NOT save - selling at cost = losing money.
-        usd_price = product_data.get("amazon_price_usd") or 0
-        if usd_price <= 0:
-            results.append({
-                "asin": asin, "status": "failed",
-                "title": product_data["title"][:80],
-                "reason": "Amazon no devolvió precio (sin stock o no disponible)"
-            })
-            summary["failed"] += 1
-            continue
-
-        hit = _blacklist_hit(product_data["title"], terms) or \
-              _blacklist_hit(product_data["description"], terms)
-
-        if hit:
-            session.add(Product(
-                asin=asin,
-                title=product_data["title"],
-                description=product_data["description"],
-                image_url=product_data["image_url"],
-                images=json.dumps(product_data.get("images") or []),
-                amazon_price_usd=usd_price,
-                converted_price_cop=0.0,
-                stock=product_data["stock"],
-                initial_stock=product_data["stock"],
-                is_prime=product_data["is_prime"],
-                amazon_category=product_data.get("amazon_category") or "",
-                category_id=body.category_id,
-                status="blocked",
-                block_reason=f"matched: {hit}",
-            ))
-            session.add(AuditLog(
-                action="amazon_import_blocked", asin=asin,
-                detail=f"matched: {hit}",
-            ))
-            results.append({"asin": asin, "status": "blocked",
-                            "title": product_data["title"][:80],
-                            "price_usd": usd_price,
-                            "reason": f"bloqueado por: {hit}"})
-            summary["blocked"] += 1
-            session.commit()
-            continue
-
-        cop_price = _safe_calculate_cop(usd_price, session)
-
-        session.add(Product(
-            asin=asin,
-            title=product_data["title"],
-            description=product_data["description"],
-            image_url=product_data["image_url"],
-            images=json.dumps(product_data.get("images") or []),
-            amazon_price_usd=usd_price,
-            converted_price_cop=cop_price,
-            stock=product_data["stock"],
-            initial_stock=product_data["stock"],
-            is_prime=product_data["is_prime"],
-            amazon_category=product_data.get("amazon_category") or "",
-            category_id=body.category_id,
-            status="pending",
-        ))
-        session.add(AuditLog(
-            action="amazon_import_added", asin=asin,
-            detail=f"price=${usd_price} -> {cop_price} COP",
-        ))
-        results.append({
-            "asin": asin, "status": "added",
-            "title": product_data["title"][:80],
-            "price_usd": usd_price,
-            "price_cop": cop_price,
-        })
-        summary["added"] += 1
-        session.commit()
-
-    return {"results": results, "summary": summary}
-
-
-@router.get("/search")
-def search_amazon(q: str, page: int = 1):
-    if not is_configured():
-        raise HTTPException(status_code=400, detail="Amazon RapidAPI not configured.")
-    if not q or not q.strip():
-        raise HTTPException(status_code=400, detail="Query cannot be empty.")
-    results = search_products(q.strip(), page=page)
-    return {"results": results, "query": q.strip(), "page": page}
-
-
-@router.post("/add-from-search")
-def add_from_search(
-    body: AddFromSearchBody,
-    session: Session = Depends(get_session),
-):
-    if not body.products:
-        return {"results": [], "summary": {"added": 0, "blocked": 0, "skipped": 0}}
-
-    terms = _load_blacklist_set(session)
-    results = []
-    summary = {"added": 0, "blocked": 0, "skipped": 0}
-
-    for item in body.products:
-        asin = item.asin.strip().upper()
-
-        existing = session.exec(select(Product).where(Product.asin == asin)).first()
-        if existing:
-            results.append({"asin": asin, "status": "skipped", "reason": "Already in catalog"})
-            summary["skipped"] += 1
-            continue
-
-        hit = _blacklist_hit(item.title, terms)
-        usd_price = item.amazon_price_usd or 0
-
-        if hit:
-            session.add(Product(
-                asin=asin,
-                title=item.title,
-                description="",
-                image_url=item.image_url,
-                images=json.dumps([item.image_url] if item.image_url else []),
-                amazon_price_usd=usd_price,
-                converted_price_cop=0.0,
-                stock=10,
-                initial_stock=10,
-                is_prime=item.is_prime,
-                category_id=body.category_id,
-                status="blocked",
-                block_reason=f"matched: {hit}",
-            ))
-            session.add(AuditLog(action="search_import_blocked", asin=asin, detail=f"matched: {hit}"))
-            results.append({"asin": asin, "status": "blocked", "title": item.title[:80], "reason": f"Blacklisted: {hit}"})
-            summary["blocked"] += 1
-            session.commit()
-            continue
-
-        cop_price = _safe_calculate_cop(usd_price, session)
-
-        session.add(Product(
-            asin=asin,
-            title=item.title,
-            description="",
-            image_url=item.image_url,
-            images=json.dumps([item.image_url] if item.image_url else []),
-            amazon_price_usd=usd_price,
-            converted_price_cop=cop_price,
-            stock=10,
-            initial_stock=10,
-            is_prime=item.is_prime,
-            category_id=body.category_id,
-            status="pending",
-        ))
-        session.add(AuditLog(action="search_import_added", asin=asin, detail=f"price=${usd_price} -> {cop_price} COP"))
-        results.append({"asin": asin, "status": "added", "title": item.title[:80]})
-        summary["added"] += 1
-        session.commit()
-
-    return {"results": results, "summary": summary}
-
-
-@router.post("/refetch-images")
-def refetch_images(session: Session = Depends(get_session)):
-    """
-    Re-calls the Amazon API for every product that has only one image stored
-    and updates the images column with the full list. Adds a 1.2 s delay
-    between calls to stay within RapidAPI rate limits.
-    """
-    import time
-
-    if not is_configured():
-        raise HTTPException(status_code=400, detail="Amazon RapidAPI not configured.")
-
-    # Only process products that still have 0 or 1 image
-    products = session.exec(select(Product)).all()
-    needs_update = []
-    for p in products:
-        try:
-            existing = json.loads(p.images) if p.images else []
-        except Exception:
-            existing = []
-        if len(existing) <= 1:
-            needs_update.append(p)
-
-    updated = 0
-    skipped = len(products) - len(needs_update)
-    failed = 0
-
-    for i, p in enumerate(needs_update):
-        if i > 0:
-            time.sleep(1.2)   # stay under rate limit
-
-        product_data = fetch_product(p.asin)
-        if not product_data:
-            failed += 1
-            continue
-
-        all_images = product_data.get("images") or []
-        if len(all_images) <= 1:
-            failed += 1
-            continue
-
-        p.images = json.dumps(all_images)
-        p.image_url = all_images[0]
-        session.add(p)
-        updated += 1
-        # commit every 10 so progress is saved even if request times out
-        if updated % 10 == 0:
-            session.commit()
-
-    session.commit()
-    return {"updated": updated, "skipped": skipped, "failed": failed, "total": len(products)}
-
-
 _ASIN_RE = re.compile(r"/(?:dp|gp/product|product)/([A-Z0-9]{10})", re.I)
 
 
@@ -364,10 +58,152 @@ def _extract_asin(raw: str) -> str | None:
     raw = raw.strip()
     if "amazon." in raw:
         m = _ASIN_RE.search(raw)
-        if m:
-            return m.group(1).upper()
-        return None
+        return m.group(1).upper() if m else None
     clean = raw.upper()
-    if len(clean) == 10 and clean.isalnum():
-        return clean
-    return None
+    return clean if len(clean) == 10 and clean.isalnum() else None
+
+
+def _calc_cop(usd: float, session: Session) -> float:
+    try:
+        return float(price_product_for_meli(usd, session).get("final_cop", 0))
+    except Exception:
+        return 0.0
+
+
+def _save_product(data: dict, category_id, session: Session) -> dict:
+    asin = data["asin"]
+    title = data["name"]
+    description = data.get("description", "")
+
+    existing = session.exec(select(Product).where(Product.asin == asin)).first()
+    if existing:
+        return {"asin": asin, "title": title, "price_usd": data["price"], "status": "skipped", "reason": "Already exists"}
+
+    # bl = blacklist.check_product(title, description)
+    # if bl["blocked"]:
+    #     p = Product(
+    #         asin=asin, title=title, description=description,
+    #         image_url=data["thumbnail"], images=json.dumps(data["images"]),
+    #         amazon_price_usd=data["price"], is_prime=data["is_prime"],
+    #         amazon_category=data.get("brand", ""), category_id=category_id,
+    #         status="blocked", block_reason=f"matched: {bl['term']}",
+    #         stock=10, initial_stock=10,
+    #     )
+    #     session.add(p)
+    #     session.commit()
+    #     return {"asin": asin, "title": title, "price_usd": data["price"], "status": "blocked", "reason": f"Blacklisted: {bl['term']}"}
+
+    cop = _calc_cop(data["price"], session)
+    p = Product(
+        asin=asin, title=title, description=description,
+        image_url=data["thumbnail"], images=json.dumps(data["images"]),
+        amazon_price_usd=data["price"], converted_price_cop=cop,
+        is_prime=data["is_prime"], rating=data.get("rating", 0.0),
+        total_ratings=data.get("total_ratings", 0),
+        whats_in_the_box=data.get("whats_in_the_box") or None,
+        amazon_category=data.get("brand", ""), category_id=category_id,
+        status="pending", stock=10, initial_stock=10,
+    )
+    session.add(p)
+    session.commit()
+    return {"asin": asin, "title": title, "price_usd": data["price"], "price_cop": cop, "status": "added"}
+
+
+@router.get("/status")
+def status():
+    return {
+        "configured": is_configured(),
+        "message": "scrape.do connected" if is_configured() else "Set SCRAPEDO_TOKEN in .env",
+    }
+
+
+@router.get("/product")
+def get_product(asin: str):
+    clean = _extract_asin(asin)
+    if not clean:
+        raise HTTPException(status_code=400, detail="Invalid ASIN or Amazon URL")
+    if not is_configured():
+        raise HTTPException(status_code=503, detail="SCRAPEDO_TOKEN not configured")
+    try:
+        return fetch_product(clean)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Fetch failed: {e}")
+
+
+@router.post("/import-from-preview")
+def import_from_preview(body: ImportFromPreviewBody, session: Session = Depends(get_session)):
+    results = []
+    summary = {"added": 0, "blocked": 0, "skipped": 0, "failed": 0}
+    for p in body.products:
+        r = _save_product(p.model_dump(), body.category_id, session)
+        results.append(r)
+        summary[r["status"]] = summary.get(r["status"], 0) + 1
+    return {"summary": summary, "results": results}
+
+
+@router.post("/import-asins")
+def import_asins(body: ImportBody, session: Session = Depends(get_session)):
+    if not is_configured():
+        raise HTTPException(status_code=503, detail="SCRAPEDO_TOKEN not configured")
+    results = []
+    summary = {"added": 0, "blocked": 0, "skipped": 0, "failed": 0}
+    for raw in body.asins:
+        asin = _extract_asin(raw) or raw.strip().upper()
+        try:
+            data = fetch_product(asin)
+        except Exception as e:
+            results.append({"asin": asin, "title": None, "status": "failed", "reason": str(e)})
+            summary["failed"] += 1
+            continue
+        r = _save_product(data, body.category_id, session)
+        results.append(r)
+        summary[r["status"]] = summary.get(r["status"], 0) + 1
+    return {"summary": summary, "results": results}
+
+
+@router.get("/search")
+def search_amazon(q: str, page: int = 1):
+    if not q.strip():
+        raise HTTPException(status_code=400, detail="Search query is empty")
+    if not is_configured():
+        raise HTTPException(status_code=503, detail="SCRAPEDO_TOKEN not configured")
+    try:
+        data = search_products(q.strip(), page)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Search failed: {e}")
+    return {
+        "keyword": q.strip(),
+        "page": data["page"],
+        "total_results": data["total_results"],
+        "results": data["products"],
+        "has_more": len(data["products"]) > 0,
+    }
+
+
+@router.post("/add-from-search")
+def add_from_search(body: AddFromSearchBody, session: Session = Depends(get_session)):
+    if not is_configured():
+        raise HTTPException(status_code=503, detail="SCRAPEDO_TOKEN not configured")
+    results = []
+    summary = {"added": 0, "blocked": 0, "skipped": 0, "failed": 0}
+    for item in body.products:
+        # Skip duplicates before spending a credit on the full PDP fetch
+        existing = session.exec(select(Product).where(Product.asin == item.asin)).first()
+        if existing:
+            results.append({"asin": item.asin, "title": item.title, "status": "skipped", "reason": "Already exists"})
+            summary["skipped"] += 1
+            continue
+        try:
+            data = fetch_product(item.asin)
+        except Exception as e:
+            results.append({"asin": item.asin, "title": item.title, "status": "failed", "reason": str(e)})
+            summary["failed"] += 1
+            continue
+        r = _save_product(data, body.category_id, session)
+        results.append(r)
+        summary[r["status"]] = summary.get(r["status"], 0) + 1
+    return {"summary": summary, "results": results}

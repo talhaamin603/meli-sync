@@ -46,7 +46,9 @@ export default {
     loadingProducts: "Cargando productos...",
     showing: "Mostrando",
     of: "de",
-  
+    first: "Primero",
+    last: "Último",
+
     // add product
     addProductTitle: "Agregar Producto",
     addProductSubtitle: "Agrega un producto manualmente al catálogo",
@@ -69,7 +71,17 @@ export default {
     loadingBlacklist: "Cargando lista...",
     addTerm: "Agregar término",
     noTerms: "No hay términos.",
-  
+    blacklistSearch: "Buscar palabras en la lista negra...",
+    multiTermHint: "Un término por línea — presiona Enter para nueva línea",
+    termExists: "Todos los términos ya existen en la lista negra",
+    blacklistedWordError: 'La palabra "{{term}}" está en la lista negra — no se puede agregar.',
+    sort: "Ordenar",
+    sortLatest: "Más recientes",
+    sortBrandOnly: "Solo marcas",
+    sortKeywordOnly: "Solo palabras clave",
+    sortAlphaAsc: "Alfabéticamente A–Z",
+    sortAlphaDesc: "Alfabéticamente Z–A",
+
 
     // amazon import
     importAsinsTitle: "Importar desde Amazon",

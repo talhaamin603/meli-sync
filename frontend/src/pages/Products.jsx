@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { getProducts, syncProduct, deleteProduct, getExchangeRate, getMarginRules } from "../api.js";
+import { getProducts, deleteProduct, getExchangeRate, getMarginRules, syncProductFromAmazon } from "../api.js";
 import { calcPrice } from "../utils/pricing.js";
 
 function StatusBadge({ status, stock, t }) {
@@ -80,6 +80,7 @@ function Products() {
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState("");
   const [syncingId, setSyncingId]           = useState(null);
+  const [confirmSync, setConfirmSync]       = useState(null); // product object
   const [toast, setToast]                   = useState(null); // { msg, ok }
   const [confirmDelete, setConfirmDelete]   = useState(null); // product object
   const [deleting, setDeleting]             = useState(false);
@@ -106,24 +107,23 @@ function Products() {
   }
 
 
-  async function handleSync(product) {
-    if (syncingId) return;
+  async function handleConfirmSync() {
+    if (!confirmSync) return;
+    const product = confirmSync;
+    setConfirmSync(null);
     setSyncingId(product.id);
     try {
-      const res = await syncProduct(product.id);
-      const msg = res?.message || res?.status || "Sync complete.";
-      showToast(msg, true);
-      // update status in list if returned
-      if (res?.status === "published" || res?.meli_item_id) {
+      const res = await syncProductFromAmazon(product.id);
+      if (res.changed && res.changed.length > 0) {
         setAll((prev) => prev.map((p) =>
-          p.id === product.id
-            ? { ...p, status: "published", meli_item_id: res.meli_item_id || p.meli_item_id }
-            : p
+          p.id === product.id ? { ...p, ...res.product } : p
         ));
+        showToast(res.changed.join(" · "), true);
+      } else {
+        showToast("Product is already up to date.", true);
       }
     } catch (e) {
-      const detail = e?.response?.data?.detail || "Sync failed.";
-      showToast(detail, false);
+      showToast(e?.response?.data?.detail || "Sync failed.", false);
     } finally {
       setSyncingId(null);
     }
@@ -235,6 +235,66 @@ function Products() {
                 style={{ background: "rgba(239,68,68,0.85)", color: "#fff", border: "none" }}
               >
                 {deleting ? "Deleting…" : "Yes, Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sync confirmation modal */}
+      {confirmSync && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{ background: "rgba(0,0,0,0.65)" }}
+          onClick={() => setConfirmSync(null)}
+        >
+          <div
+            className="rounded-2xl p-6 max-w-sm w-full mx-4"
+            style={{ background: "#0f1623", border: "1px solid rgba(34,197,94,0.3)", boxShadow: "0 0 40px rgba(34,197,94,0.1)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 mb-3">
+              <div
+                className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.3)" }}
+              >
+                <IconSync />
+              </div>
+              <div>
+                <p className="text-white font-semibold text-sm">Sync Product</p>
+                <p className="text-[#6b7785] text-xs">Checks Amazon · Updates Mercado Libre if needed</p>
+              </div>
+            </div>
+            <p className="text-[#a0adbb] text-sm mb-2 leading-relaxed">
+              Sync{" "}
+              <span className="text-white font-medium">
+                {confirmSync.title?.length > 55
+                  ? confirmSync.title.slice(0, 55) + "…"
+                  : confirmSync.title}
+              </span>?
+            </p>
+            <ul className="text-xs text-[#6b7785] mb-5 space-y-1 pl-1">
+              <li>· Fetches latest price, rating &amp; Prime status from Amazon</li>
+              <li>· Updates your database if anything changed</li>
+              {confirmSync.status === "published" && confirmSync.meli_item_id && (
+                <li>· Pushes new price to Mercado Libre automatically</li>
+              )}
+              <li className="text-[#4a5568]">· Uses 1 scrape.do credit</li>
+            </ul>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setConfirmSync(null)}
+                className="px-4 py-2 rounded-xl text-sm font-medium transition-all"
+                style={{ background: "rgba(80,160,250,0.06)", border: "1px solid rgba(80,160,250,0.18)", color: "#a0adbb" }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmSync}
+                className="px-4 py-2 rounded-xl text-sm font-semibold transition-all"
+                style={{ background: "rgba(34,197,94,0.85)", color: "#0d1117", border: "none" }}
+              >
+                Yes, Sync
               </button>
             </div>
           </div>
@@ -455,11 +515,11 @@ function Products() {
                           <IconEdit />
                         </ActionBtn>
 
-                        {/* Sync to MercadoLibre */}
+                        {/* Sync */}
                         <ActionBtn
-                          title="Sync to MercadoLibre"
+                          title="Sync product (checks Amazon, updates Mercado Libre)"
                           color="#22c55e"
-                          onClick={() => handleSync(p)}
+                          onClick={() => setConfirmSync(p)}
                           disabled={isSyncing}
                           spinning={isSyncing}
                         >

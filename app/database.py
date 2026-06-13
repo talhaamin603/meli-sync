@@ -1,21 +1,19 @@
-﻿"""Database connection and session handling."""
 import json
-from sqlmodel import SQLModel, create_engine, Session
+from sqlmodel import SQLModel, create_engine, Session, select
 from sqlalchemy import text
 from app.config import settings
 
-# echo=False keeps the console clean. Set True to see every SQL query.
+# check_same_thread=False is required for SQLite with FastAPI's threaded request handling
 _connect_args = {"check_same_thread": False} if settings.DATABASE_URL.startswith("sqlite") else {}
 engine = create_engine(settings.DATABASE_URL, echo=False, connect_args=_connect_args)
 
 
 def init_db():
-    """Create all tables defined in models.py if they don't exist."""
     SQLModel.metadata.create_all(engine)
 
 
 def migrate_db():
-    """Add new columns to existing tables that predate them."""
+    """Add columns introduced after the initial schema — safe to re-run."""
     migrations = [
         "ALTER TABLE product ADD COLUMN images TEXT",
         "ALTER TABLE product ADD COLUMN initial_stock INTEGER",
@@ -23,6 +21,9 @@ def migrate_db():
         "ALTER TABLE product ADD COLUMN deleted_at DATETIME",
         "ALTER TABLE product ADD COLUMN amazon_category TEXT",
         "ALTER TABLE product ADD COLUMN category_id INTEGER",
+        "ALTER TABLE product ADD COLUMN rating REAL DEFAULT 0.0",
+        "ALTER TABLE product ADD COLUMN total_ratings INTEGER DEFAULT 0",
+        "ALTER TABLE product ADD COLUMN whats_in_the_box TEXT",
     ]
     with engine.connect() as conn:
         for stmt in migrations:
@@ -32,8 +33,7 @@ def migrate_db():
             except Exception:
                 pass  # column already exists
 
-        # Backfill images from image_url for all products that still have images = NULL.
-        # This ensures existing products show at least their one known image in the edit page.
+        # Backfill images from image_url for products created before the images column existed.
         rows = conn.execute(
             text("SELECT id, image_url FROM product WHERE images IS NULL AND image_url IS NOT NULL")
         ).fetchall()
@@ -44,7 +44,6 @@ def migrate_db():
             )
         if rows:
             conn.commit()
-            print(f"[migrate] backfilled images for {len(rows)} products")
 
 
 _DEFAULT_MARGIN_RULES = [
@@ -55,13 +54,11 @@ _DEFAULT_MARGIN_RULES = [
     {"min": 200, "max": 10000, "markup": 75,  "order": 5},
 ]
 
+
 def seed_margin_rules():
-    """Insert default margin rules if the table is empty."""
     from app.models import MarginRule
-    from sqlmodel import Session, select
     with Session(engine) as session:
-        existing = session.exec(select(MarginRule)).first()
-        if existing:
+        if session.exec(select(MarginRule)).first():
             return
         for r in _DEFAULT_MARGIN_RULES:
             session.add(MarginRule(
@@ -69,10 +66,8 @@ def seed_margin_rules():
                 markup_pct=r["markup"], sort_order=r["order"],
             ))
         session.commit()
-        print("[migrate] seeded default margin rules")
 
 
 def get_session():
-    """Yields a database session for one request, then closes it."""
     with Session(engine) as session:
         yield session

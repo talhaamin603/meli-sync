@@ -42,7 +42,9 @@ export default {
     loadingProducts: "Loading products...",
     showing: "Showing",
     of: "of",
-  
+    first: "First",
+    last: "Last",
+
     addProductTitle: "Add Product",
     addProductSubtitle: "Add a product manually to the catalog",
     description: "Description",
@@ -63,7 +65,17 @@ export default {
     loadingBlacklist: "Loading blacklist...",
     addTerm: "Add term",
     noTerms: "No terms found.",
-  
+    blacklistSearch: "Search for blocklist words...",
+    multiTermHint: "One term per line — press Enter for a new line",
+    termExists: "All terms already exist in the blacklist",
+    blacklistedWordError: 'The word "{{term}}" is in the blacklist — it cannot be added.',
+    sort: "Sort",
+    sortLatest: "Latest added",
+    sortBrandOnly: "Brand only",
+    sortKeywordOnly: "Keywords only",
+    sortAlphaAsc: "Alphabetically A–Z",
+    sortAlphaDesc: "Alphabetically Z–A",
+
 
     importAsinsTitle: "Import from Amazon",
     importAsinsSubtitle: "Paste one or many ASINs (or Amazon links) to import",

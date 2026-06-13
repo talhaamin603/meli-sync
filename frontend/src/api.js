@@ -87,8 +87,15 @@ export async function deleteBlacklistTerm(id) {
   return res.data;
 }
 
-export async function refetchImages() {
-  const res = await api.post("/amazon/refetch-images");
+export async function fetchAmazonProduct(asin) {
+  const res = await api.get("/amazon/product", { params: { asin } });
+  return res.data;
+}
+
+export async function importFromPreview(products, category_id) {
+  const body = { products };
+  if (category_id) body.category_id = category_id;
+  const res = await api.post("/amazon/import-from-preview", body);
   return res.data;
 }
 
@@ -128,6 +135,31 @@ export async function addFromSearch(products, category_id) {
 // ---- SYNC ----
 export async function getSyncHistory() {
   const res = await api.get("/sync/history");
+  return res.data;
+}
+
+export async function syncProductFromAmazon(id) {
+  const res = await api.post(`/sync/product/${id}`);
+  return res.data;
+}
+
+export async function triggerAmazonSync() {
+  const res = await api.post("/sync/amazon");
+  return res.data;
+}
+
+export async function triggerMeliSync() {
+  const res = await api.post("/sync/run");
+  return res.data;
+}
+
+export async function getSyncSettings() {
+  const res = await api.get("/sync/settings");
+  return res.data;
+}
+
+export async function saveSyncSettings(body) {
+  const res = await api.post("/sync/settings", body);
   return res.data;
 }
 

@@ -12,6 +12,7 @@ import ImportAsins from "./pages/ImportAsins.jsx";
 import RecycleBin from "./pages/RecycleBin.jsx";
 import MarginConfig from "./pages/MarginConfig.jsx";
 import Categories from "./pages/Categories.jsx";
+import Sync from "./pages/Sync.jsx";
 
 function App() {
   return (
@@ -34,6 +35,7 @@ function App() {
         <Route path="recycle-bin" element={<RecycleBin />} />
         <Route path="margin-config" element={<MarginConfig />} />
         <Route path="categories" element={<Categories />} />
+        <Route path="sync" element={<Sync />} />
       </Route>
     </Routes>
   );

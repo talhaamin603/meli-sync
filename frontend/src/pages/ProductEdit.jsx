@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { getProducts, updateProduct, getCategories } from "../api.js";
 
 const SLOTS = 8;
@@ -256,6 +257,7 @@ function StatusBadge({ status }) {
 // ── main page ──────────────────────────────────────────────────────────────
 
 export default function ProductEdit() {
+  const { t }      = useTranslation();
   const { id }     = useParams();
   const location   = useLocation();
   const navigate   = useNavigate();
@@ -268,6 +270,7 @@ export default function ProductEdit() {
 
   const [title, setTitle]               = useState("");
   const [description, setDescription]   = useState("");
+  const [whatsInBox, setWhatsInBox]     = useState("");
   const [amazonPrice, setAmazonPrice]   = useState("");
   const [stock, setStock]               = useState("");
   const [initialStock, setInitialStock] = useState("");
@@ -299,6 +302,7 @@ export default function ProductEdit() {
   function initForm(p) {
     setTitle(p.title || "");
     setDescription(p.description || "");
+    setWhatsInBox(p.whats_in_the_box || "");
     setAmazonPrice(p.amazon_price_usd ?? "");
     setStock(p.stock ?? "");
     setInitialStock(p.initial_stock ?? "");
@@ -337,6 +341,7 @@ export default function ProductEdit() {
       await updateProduct(product.id, {
         title:            title.trim(),
         description:      description.trim(),
+        whats_in_the_box: whatsInBox.trim() || null,
         images:           filledImages,
         amazon_price_usd: amazonPrice !== "" ? parseFloat(amazonPrice) : undefined,
         stock:            stock !== "" ? parseInt(stock, 10) : undefined,
@@ -347,7 +352,12 @@ export default function ProductEdit() {
       setSaved(true);
       setTimeout(() => navigate("/products"), 900);
     } catch (e) {
-      setError(e?.response?.data?.detail || "Save failed.");
+      const detail = e?.response?.data?.detail;
+      if (detail && typeof detail === "object" && detail.code === "blacklisted") {
+        setError(t("blacklistedWordError", { term: detail.term }));
+      } else {
+        setError((typeof detail === "string" && detail) || "Save failed.");
+      }
       setSaving(false);
     }
   }
@@ -432,6 +442,29 @@ export default function ProductEdit() {
                   {product?.created_at ? new Date(product.created_at).toLocaleDateString() : "—"}
                 </p>
               </div>
+            </div>
+          </SectionCard>
+
+          <SectionCard title="Amazon Info">
+            <div className="space-y-3 text-sm">
+              <div>
+                <p className="text-[11px] text-[#6b7785] uppercase tracking-wider mb-1">Brand</p>
+                <p className="text-[#a0adbb] text-xs">{product?.amazon_category || "—"}</p>
+              </div>
+              <div>
+                <p className="text-[11px] text-[#6b7785] uppercase tracking-wider mb-1">Rating</p>
+                <p className="text-xs text-white">
+                  {product?.rating > 0
+                    ? <>★ {Number(product.rating).toFixed(1)} <span className="text-[#6b7785]">/ 5</span></>
+                    : "—"}
+                </p>
+              </div>
+              <div>
+                <p className="text-[11px] text-[#6b7785] uppercase tracking-wider mb-1">Total Ratings</p>
+                <p className="text-xs text-[#a0adbb]">
+                  {product?.total_ratings > 0 ? Number(product.total_ratings).toLocaleString() : "—"}
+                </p>
+              </div>
               <div>
                 <p className="text-[11px] text-[#6b7785] uppercase tracking-wider mb-1">Prime</p>
                 <p className="text-xs" style={{ color: product?.is_prime ? "#22c55e" : "#6b7785" }}>
@@ -454,6 +487,9 @@ export default function ProductEdit() {
               </Field>
               <Field label="Description">
                 <ETextarea rows={5} value={description} onChange={(e) => setDescription(e.target.value)} />
+              </Field>
+              <Field label="What's in the Box">
+                <ETextarea rows={3} value={whatsInBox} onChange={(e) => setWhatsInBox(e.target.value)} />
               </Field>
             </div>
           </SectionCard>

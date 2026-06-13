@@ -1,85 +1,105 @@
-"""FastAPI application entry point."""
 from dotenv import load_dotenv
 load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.database import init_db, migrate_db, seed_margin_rules
-from app.routers import manual_products
-from app.routers import meli
+from app.database import init_db, migrate_db, seed_margin_rules, engine
+from app.routers import manual_products, meli
 from app.routers import amazon as amazon_router
 from app.routers import sync as sync_router
 from app.routers import categories as categories_router
-# from app.routers import auth as auth_router   # ← disabled locally (router not yet created)
 
-app = FastAPI(title="Meli Sync - Module 1 & 2")
+app = FastAPI(title="Meli Sync")
 
-# ============================================================
-# CORS - Allow React frontend to call this backend
-# ============================================================
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",           # React dev server
-        "http://localhost:5174",           # React dev server (fallback port)
-        "http://localhost:3000",           # Alternative dev port
-        "https://*.railway.app",           # Railway frontend
-        "http://melizone.tech",            # Production domain
-        "https://melizone.tech",           # Production domain HTTPS
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:3000",
+        "https://*.railway.app",
+        "http://melizone.tech",
+        "https://melizone.tech",
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ============================================================
-# Include routers
-# ============================================================
 app.include_router(manual_products.router)
 app.include_router(meli.router)
 app.include_router(amazon_router.router)
 app.include_router(sync_router.router)
 app.include_router(categories_router.router)
-# app.include_router(auth_router.router)        # ← disabled locally
 
-# ============================================================
-# Startup event
-# ============================================================
+_UNIT_SECONDS = {"seconds": 1, "minutes": 60, "hours": 3600, "days": 86400, "weeks": 604800}
+
+
+def _unblock_if_disabled():
+    """If blacklist is disabled, restore all blacklist-blocked products to pending."""
+    from app.routers.manual_products import BLACKLIST_ENABLED
+    if BLACKLIST_ENABLED:
+        return
+    from sqlmodel import Session, select
+    from app.models import Product
+    with Session(engine) as s:
+        blocked = s.exec(
+            select(Product)
+            .where(Product.status == "blocked")
+            .where(Product.block_reason.startswith("matched"))  # type: ignore[arg-type]
+        ).all()
+        if blocked:
+            for p in blocked:
+                p.status = "pending"
+                p.block_reason = None
+                s.add(p)
+            s.commit()
+            print(f"[blacklist] disabled — restored {len(blocked)} blocked product(s) to pending")
+
+
 @app.on_event("startup")
 def on_startup():
     init_db()
     migrate_db()
     seed_margin_rules()
-    print("Database tables ready.")
-    print("Module 1 & 2 routers loaded.")
-    # print("Auth router loaded.")
+    _unblock_if_disabled()
 
-# ============================================================
-# Health endpoints
-# ============================================================
+    # Load saved sync intervals from DB; fall back to None → cron defaults
+    from app.models import Setting
+    from sqlmodel import Session, select
+
+    amazon_secs = None
+    meli_secs = None
+    with Session(engine) as s:
+        def _g(key):
+            row = s.exec(select(Setting).where(Setting.key == key)).first()
+            return row.value if row else None
+
+        a_val, a_unit = _g("amazon_sync_value"), _g("amazon_sync_unit")
+        m_val, m_unit = _g("meli_sync_value"), _g("meli_sync_unit")
+
+        if a_val and a_unit and a_unit in _UNIT_SECONDS:
+            amazon_secs = int(a_val) * _UNIT_SECONDS[a_unit]
+        if m_val and m_unit and m_unit in _UNIT_SECONDS:
+            meli_secs = int(m_val) * _UNIT_SECONDS[m_unit]
+
+    from app.services.scheduler import start_scheduler
+    start_scheduler(amazon_secs, meli_secs)
+
+
 @app.get("/")
 def root():
-    return {
-        "status": "ok",
-        "module": 1,
-        "message": "Meli Sync API running"
-    }
+    return {"status": "ok", "message": "Meli Sync API running"}
+
 
 @app.get("/health")
 def health():
     return {"healthy": True}
 
 
-# ============================================================
-# For testing only - list all routes
-# ============================================================
 @app.get("/routes")
 def list_routes():
-    """Utility endpoint to see all registered routes"""
-    routes = []
-    for route in app.routes:
-        routes.append({
-            "path": route.path,
-            "methods": list(route.methods) if hasattr(route, "methods") else []
-        })
-    return {"routes": routes}
+    return [
+        {"path": r.path, "methods": list(r.methods) if hasattr(r, "methods") else []}
+        for r in app.routes
+    ]
