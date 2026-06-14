@@ -99,9 +99,7 @@ function NavItem({ to, icon, label }) {
             }
       }
     >
-      <span
-        className="flex-shrink-0 transition-transform duration-200 group-hover/nav:scale-110"
-      >
+      <span className="flex-shrink-0">
         {icon}
       </span>
       <span>{label}</span>
@@ -134,7 +132,6 @@ function Layout() {
               style={{
                 background: "linear-gradient(135deg, #50A0FA 0%, #3d7fd1 100%)",
                 color: "#0d1117",
-                boxShadow: "0 0 16px rgba(80,160,250,0.45)",
               }}
             >
               M
@@ -143,7 +140,6 @@ function Layout() {
             </div>
             <div>
               <div className="font-semibold text-sm text-white leading-tight">Meli Sync</div>
-              <div className="text-[10px] text-[#6b7785] leading-tight">v2.0 · Pro</div>
             </div>
           </div>
           <LangToggle />
@@ -185,23 +181,6 @@ function Layout() {
 
       {/* Main content area */}
       <main className="flex-1 overflow-auto relative">
-        {/* Floating background glow */}
-        <div
-          className="glow-float-a pointer-events-none absolute"
-          style={{
-            top: "-200px", right: "10%", width: "600px", height: "500px",
-            background:
-              "radial-gradient(circle, rgba(80,160,250,0.12) 0%, transparent 60%)",
-          }}
-        />
-        <div
-          className="glow-float-b pointer-events-none absolute"
-          style={{
-            bottom: "-100px", left: "5%", width: "400px", height: "400px",
-            background:
-              "radial-gradient(circle, rgba(80,160,250,0.05) 0%, transparent 60%)",
-          }}
-        />
         <div className="relative p-8 max-w-7xl">
           <Outlet />
         </div>

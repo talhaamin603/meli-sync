@@ -9,24 +9,24 @@ function DashboardStatusBadge({ status, stock }) {
   const { t } = useTranslation();
   if (stock === 0) {
     return (
-      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold border inline-flex items-center gap-1"
-        style={{ background: "rgba(239,68,68,0.12)", color: "#ef4444", borderColor: "rgba(239,68,68,0.25)" }}>
-        <span className="w-1.5 h-1.5 rounded-full inline-block bg-red-500" />
+      <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold border inline-flex items-center gap-1 whitespace-nowrap"
+        style={{ background: "rgba(239,68,68,0.10)", color: "#ef4444", borderColor: "rgba(239,68,68,0.22)" }}>
+        <span className="w-1.5 h-1.5 rounded-full inline-block flex-shrink-0 bg-red-500" />
         {t("outOfStockLabel")}
       </span>
     );
   }
   const map = {
-    published: { bg: "rgba(34,197,94,0.12)",  fg: "#22c55e", border: "rgba(34,197,94,0.25)",  label: t("activeLabel") },
-    blocked:   { bg: "rgba(239,68,68,0.12)",  fg: "#ef4444", border: "rgba(239,68,68,0.25)",  label: t("blocked") },
-    failed:    { bg: "rgba(245,158,11,0.12)", fg: "#f59e0b", border: "rgba(245,158,11,0.25)", label: t("syncFailedLabel") },
-    pending:   { bg: "rgba(80,160,250,0.12)", fg: "#50A0FA", border: "rgba(80,160,250,0.25)", label: t("pending") },
+    published: { bg: "rgba(34,197,94,0.10)",  fg: "#22c55e", border: "rgba(34,197,94,0.22)",  label: t("activeLabel") },
+    blocked:   { bg: "rgba(239,68,68,0.10)",  fg: "#ef4444", border: "rgba(239,68,68,0.22)",  label: t("blocked") },
+    failed:    { bg: "rgba(245,158,11,0.10)", fg: "#f59e0b", border: "rgba(245,158,11,0.22)", label: t("syncFailedLabel") },
+    pending:   { bg: "rgba(77,158,248,0.10)", fg: "#4D9EF8", border: "rgba(77,158,248,0.22)", label: t("pending") },
   };
   const s = map[status] || map.pending;
   return (
-    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold border inline-flex items-center gap-1"
+    <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold border inline-flex items-center gap-1 whitespace-nowrap"
       style={{ background: s.bg, color: s.fg, borderColor: s.border }}>
-      <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: s.fg }} />
+      <span className="w-1.5 h-1.5 rounded-full inline-block flex-shrink-0" style={{ background: s.fg }} />
       {s.label}
     </span>
   );
@@ -51,31 +51,22 @@ function StatCard({ label, value, iconColor, iconBg, icon, subtext, accentColor,
 
   return (
     <div
-      className="relative rounded-xl overflow-hidden group transition-all duration-300 hover:-translate-y-1"
+      className="rounded-xl transition-all duration-250 hover:-translate-y-1"
       style={{
-        animation: `fadeUp 0.6s ease-out ${delay}s backwards`,
-        background: "linear-gradient(135deg, rgba(80,160,250,0.04) 0%, rgba(16,21,31,0.7) 100%)",
-        border: "1px solid rgba(80,160,250,0.12)",
+        animation: `fadeUp 0.45s cubic-bezier(0.16,1,0.3,1) ${delay}s backwards`,
+        background: "#111827",
+        border: "1px solid rgba(77,158,248,0.14)",
       }}
-      onMouseEnter={e => { e.currentTarget.style.borderColor = `${accentColor}55`; e.currentTarget.style.boxShadow = `0 8px 32px ${accentColor}18`; }}
-      onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(80,160,250,0.12)"; e.currentTarget.style.boxShadow = "none"; }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(77,158,248,0.35)"; }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(77,158,248,0.14)"; }}
     >
-      {/* Top accent line */}
-      <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: `linear-gradient(90deg, transparent, ${accentColor}80, transparent)` }} />
-
-      {/* Hover glow */}
-      <div
-        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-        style={{ background: `radial-gradient(circle at 50% 130%, ${accentColor}18, transparent 70%)` }}
-      />
-
-      <div className="p-5 relative z-10">
+      <div className="p-5">
         <div className="flex items-start justify-between mb-4">
           <div>
-            <div className="text-[10px] text-[#6b7785] uppercase tracking-widest font-bold mb-0.5">
+            <div className="text-[10px] text-[#5e6b79] uppercase tracking-[0.08em] font-semibold mb-0.5">
               {label}
             </div>
-            <div className="text-3xl font-black text-white tracking-tight" style={{ textShadow: `0 0 30px ${accentColor}30` }}>
+            <div className="text-3xl font-black text-white tracking-tight tabular-nums" style={{ letterSpacing: "-0.02em" }}>
               {display.toLocaleString()}
             </div>
             {subtext && (
@@ -84,12 +75,9 @@ function StatCard({ label, value, iconColor, iconBg, icon, subtext, accentColor,
               </div>
             )}
           </div>
-          <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 flex-shrink-0"
-            style={{ background: iconBg, color: iconColor, boxShadow: `0 4px 12px ${accentColor}25` }}
-          >
+          <span className="flex-shrink-0" style={{ color: iconColor }}>
             {icon}
-          </div>
+          </span>
         </div>
       </div>
     </div>
@@ -219,12 +207,42 @@ function Dashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-3 p-4 text-[#a0adbb]">
-        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-        </svg>
-        {t("loadingDashboard")}
+      <div>
+        {/* Skeleton KPI row */}
+        <div className="grid grid-cols-4 gap-4 mb-6">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="rounded-xl p-5" style={{ background: "#111827", border: "1px solid rgba(77,158,248,0.1)" }}>
+              <div className="skeleton h-2.5 w-20 mb-4 rounded" />
+              <div className="skeleton h-8 w-16 mb-2 rounded" />
+              <div className="skeleton h-2 w-24 rounded" />
+            </div>
+          ))}
+        </div>
+        {/* Skeleton section row */}
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="rounded-xl p-5" style={{ background: "#111827", border: "1px solid rgba(77,158,248,0.1)" }}>
+              <div className="skeleton h-2.5 w-24 mb-5 rounded" />
+              <div className="skeleton h-10 w-12 mb-3 rounded" />
+              <div className="skeleton h-2 w-32 rounded" />
+            </div>
+          ))}
+        </div>
+        {/* Skeleton table */}
+        <div className="card rounded-xl p-5">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="flex items-center gap-4 py-3" style={{ borderBottom: i < 4 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+              <div className="skeleton w-10 h-10 rounded-lg flex-shrink-0" />
+              <div className="flex-1">
+                <div className="skeleton h-2.5 w-48 mb-2 rounded" />
+                <div className="skeleton h-2 w-24 rounded" />
+              </div>
+              <div className="skeleton h-2.5 w-16 rounded" />
+              <div className="skeleton h-2.5 w-20 rounded" />
+              <div className="skeleton h-5 w-16 rounded-md" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -308,10 +326,10 @@ function Dashboard() {
               {t("dashboardTitle")}
             </h1>
             <span
-              className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider"
-              style={{ background: "rgba(34,197,94,0.12)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.25)" }}
+              className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-semibold"
+              style={{ background: "rgba(34,197,94,0.10)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.22)" }}
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse flex-shrink-0" />
               {t("liveLabel")}
             </span>
           </div>
@@ -463,7 +481,7 @@ function Dashboard() {
         {/* MercadoLibre Stats Card */}
         <div
           className="card rounded-xl p-5 lg:col-span-2 group hover:-translate-y-1 transition-all duration-300 relative overflow-hidden"
-          style={{ animation: "fadeUp 0.6s ease-out 0.5s backwards" }}
+          style={{ animation: "fadeUp 0.45s cubic-bezier(0.16,1,0.3,1) 0.5s backwards" }}
           onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(80,160,250,0.3)"; }}
           onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(80,160,250,0.15)"; }}
         >
@@ -535,7 +553,7 @@ function Dashboard() {
         {/* Exchange rate card */}
         <div
           className="card rounded-xl p-5 group hover:-translate-y-1 transition-all duration-300 relative overflow-hidden flex flex-col"
-          style={{ animation: "fadeUp 0.6s ease-out 0.6s backwards" }}
+          style={{ animation: "fadeUp 0.45s cubic-bezier(0.16,1,0.3,1) 0.6s backwards" }}
           onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(80,160,250,0.35)"; e.currentTarget.style.boxShadow = "0 8px 32px rgba(80,160,250,0.12)"; }}
           onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(80,160,250,0.15)"; e.currentTarget.style.boxShadow = "none"; }}
         >
@@ -596,42 +614,32 @@ function Dashboard() {
 
         {/* Box 1 — Sales This Month */}
         <div
-          className="rounded-xl p-5 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300"
+          className="rounded-xl p-5 transition-all duration-150 hover:-translate-y-1"
           style={{
-            animation: "fadeUp 0.6s ease-out 0.5s backwards",
-            background: "linear-gradient(135deg, rgba(80,160,250,0.04) 0%, rgba(16,21,31,0.7) 100%)",
-            border: "1px solid rgba(80,160,250,0.12)",
+            animation: "fadeUp 0.45s cubic-bezier(0.16,1,0.3,1) 0.35s backwards",
+            background: "#111827",
+            border: "1px solid rgba(77,158,248,0.14)",
           }}
-          onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(80,160,250,0.35)"; e.currentTarget.style.boxShadow = "0 8px 32px rgba(80,160,250,0.1)"; }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(80,160,250,0.12)"; e.currentTarget.style.boxShadow = "none"; }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(77,158,248,0.35)"; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(77,158,248,0.14)"; }}
         >
-          {/* Top accent line */}
-          <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: "linear-gradient(90deg, transparent, rgba(80,160,250,0.6), transparent)" }} />
-
           <div className="flex items-start justify-between mb-3">
-            <div className="text-[10px] uppercase tracking-widest font-bold text-[#6b7785]">{t("salesThisMonth")}</div>
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center text-lg"
-              style={{ background: "rgba(80,160,250,0.1)", boxShadow: "0 4px 12px rgba(80,160,250,0.2)" }}>
-              💵
-            </div>
+            <div className="text-[10px] uppercase tracking-[0.08em] font-semibold text-[#5e6b79]">{t("salesThisMonth")}</div>
+            <span style={{ color: "#4D9EF8" }}>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </span>
           </div>
-
-          {/* Dollar amount */}
-          <div className="text-2xl font-black text-white tracking-tight mb-0.5" style={{ textShadow: "0 0 20px rgba(80,160,250,0.3)" }}>
+          <div className="text-2xl font-black text-white tracking-tight tabular-nums mb-0.5" style={{ letterSpacing: "-0.02em" }}>
             $0.00
           </div>
-
-          {/* Order count */}
-          <div className="text-[11px] text-[#6b7785] mb-2">
-            {t("zeroOrders")}
-          </div>
-
-          {/* Delta */}
+          <div className="text-[11px] text-[#5e6b79] mb-2">{t("zeroOrders")}</div>
           <div className="flex items-center gap-1.5">
-            <svg className="w-3.5 h-3.5" fill="none" stroke="#6b7785" viewBox="0 0 24 24" strokeWidth="3">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="#5e6b79" viewBox="0 0 24 24" strokeWidth="3">
               <path strokeLinecap="round" strokeLinejoin="round" d="M20 12H4" />
             </svg>
-            <span className="text-[11px] font-bold text-[#6b7785]">{t("noDataYet")}</span>
+            <span className="text-[11px] font-semibold text-[#5e6b79]">{t("noDataYet")}</span>
           </div>
         </div>
 
@@ -653,40 +661,34 @@ function Dashboard() {
           }
           return (
             <div
-              className="rounded-xl p-5 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300"
+              className="rounded-xl p-5 transition-all duration-150 hover:-translate-y-1"
               style={{
-                animation: "fadeUp 0.6s ease-out 0.6s backwards",
-                background: "linear-gradient(135deg, rgba(80,160,250,0.04) 0%, rgba(16,21,31,0.7) 100%)",
-                border: "1px solid rgba(80,160,250,0.12)",
+                animation: "fadeUp 0.45s cubic-bezier(0.16,1,0.3,1) 0.42s backwards",
+                background: "#111827",
+                border: "1px solid rgba(77,158,248,0.14)",
               }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(80,160,250,0.35)"; e.currentTarget.style.boxShadow = "0 8px 32px rgba(80,160,250,0.1)"; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(80,160,250,0.12)"; e.currentTarget.style.boxShadow = "none"; }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(77,158,248,0.35)"; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(77,158,248,0.14)"; }}
             >
-              <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: "linear-gradient(90deg, transparent, rgba(80,160,250,0.6), transparent)" }} />
-
               <div className="flex items-start justify-between mb-3">
-                <div className="text-[10px] uppercase tracking-widest font-bold text-[#6b7785]">{t("amazonSyncShort")}</div>
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center"
-                  style={{ background: "rgba(80,160,250,0.1)", boxShadow: "0 4px 12px rgba(80,160,250,0.2)" }}>
-                  <svg className={`w-4 h-4 text-[#50A0FA] ${syncsToday > 0 ? "animate-spin" : ""}`} style={{ animationDuration: "3s" }} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.2">
+                <div className="text-[10px] uppercase tracking-[0.08em] font-semibold text-[#5e6b79]">{t("amazonSyncShort")}</div>
+                <span style={{ color: "#4D9EF8" }}>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
-                </div>
+                </span>
               </div>
-
-              <div className="text-2xl font-black text-white tracking-tight mb-0.5" style={{ textShadow: "0 0 20px rgba(80,160,250,0.3)" }}>
+              <div className="text-2xl font-black text-white tracking-tight tabular-nums mb-0.5" style={{ letterSpacing: "-0.02em" }}>
                 {syncsToday}
               </div>
-
-              <div className="text-[11px] text-[#6b7785] mb-2">
+              <div className="text-[11px] text-[#5e6b79] mb-2">
                 {syncsToday === 1 ? t("syncRunToday") : t("syncsRunToday")}
               </div>
-
               <div className="flex items-center gap-1.5">
-                <svg className="w-3 h-3 text-[#6b7785]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                <svg className="w-3 h-3 text-[#5e6b79]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span className="text-[11px] font-bold" style={{ color: lastSync ? "#50A0FA" : "#6b7785" }}>
+                <span className="text-[11px] font-semibold" style={{ color: lastSync ? "#4D9EF8" : "#5e6b79" }}>
                   {t("lastSyncLabel")} {lastSyncLabel}
                 </span>
               </div>
@@ -705,38 +707,40 @@ function Dashboard() {
           const bgColor = count === 0 ? "rgba(34,197,94,0.04)" : urgent ? "rgba(239,68,68,0.04)" : "rgba(245,158,11,0.04)";
           return (
             <div
-              className="rounded-xl p-5 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300"
+              className="rounded-xl p-5 transition-all duration-150 hover:-translate-y-1"
               style={{
-                animation: "fadeUp 0.6s ease-out 0.7s backwards",
-                background: `linear-gradient(135deg, ${bgColor} 0%, rgba(16,21,31,0.7) 100%)`,
+                animation: "fadeUp 0.45s cubic-bezier(0.16,1,0.3,1) 0.49s backwards",
+                background: "#111827",
                 border: `1px solid ${borderColor}`,
               }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = accentColor + "55"; e.currentTarget.style.boxShadow = `0 8px 32px ${accentColor}18`; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = borderColor; e.currentTarget.style.boxShadow = "none"; }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = accentColor + "55"; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = borderColor; }}
             >
-              <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: `linear-gradient(90deg, transparent, ${accentColor}80, transparent)` }} />
-
               <div className="flex items-start justify-between mb-3">
-                <div className="text-[10px] uppercase tracking-widest font-bold text-[#6b7785]">{t("needsAttention")}</div>
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center text-lg"
-                  style={{ background: `${accentColor}18`, boxShadow: `0 4px 12px ${accentColor}30` }}>
-                  {count === 0 ? "✅" : "⚠️"}
-                </div>
+                <div className="text-[10px] uppercase tracking-[0.08em] font-semibold text-[#5e6b79]">{t("needsAttention")}</div>
+                <span style={{ color: accentColor }}>
+                  {count === 0 ? (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                    </svg>
+                  )}
+                </span>
               </div>
-
-              <div className="text-2xl font-black tracking-tight mb-0.5" style={{ color: accentColor, textShadow: `0 0 20px ${accentColor}40` }}>
+              <div className="text-2xl font-black tracking-tight tabular-nums mb-0.5" style={{ color: accentColor, letterSpacing: "-0.02em" }}>
                 {count}
               </div>
-
-              <div className="text-[11px] text-[#6b7785] mb-2">
+              <div className="text-[11px] text-[#5e6b79] mb-2">
                 {count === 0 ? t("allInStock") : t("outOfStockSubtitle", { s: count !== 1 ? "s" : "" })}
               </div>
-
               <div className="flex items-center gap-1.5">
                 <svg className="w-3 h-3" fill="none" stroke={accentColor} viewBox="0 0 24 24" strokeWidth="2.5">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
                 </svg>
-                <span className="text-[11px] font-bold" style={{ color: accentColor }}>
+                <span className="text-[11px] font-semibold" style={{ color: accentColor }}>
                   {urgent
                     ? t("listedMlUrgent", { n: publishedOos })
                     : count > 0
@@ -770,35 +774,29 @@ function Dashboard() {
 
           return (
             <div
-              className="rounded-xl p-5 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300"
+              className="rounded-xl p-5 transition-all duration-150 hover:-translate-y-1"
               style={{
-                animation: "fadeUp 0.6s ease-out 0.8s backwards",
-                background: "linear-gradient(135deg, rgba(80,160,250,0.04) 0%, rgba(16,21,31,0.7) 100%)",
-                border: "1px solid rgba(80,160,250,0.12)",
+                animation: "fadeUp 0.45s cubic-bezier(0.16,1,0.3,1) 0.56s backwards",
+                background: "#111827",
+                border: "1px solid rgba(77,158,248,0.14)",
               }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = `${accentColor}55`; e.currentTarget.style.boxShadow = `0 8px 32px ${accentColor}18`; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(80,160,250,0.12)"; e.currentTarget.style.boxShadow = "none"; }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = `${accentColor}55`; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(77,158,248,0.14)"; }}
             >
-              <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: `linear-gradient(90deg, transparent, ${accentColor}80, transparent)` }} />
-
               <div className="flex items-start justify-between mb-3">
-                <div className="text-[10px] uppercase tracking-widest font-bold text-[#6b7785]">{t("avgProfitMargin")}</div>
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center"
-                  style={{ background: `${accentColor}18`, boxShadow: `0 4px 12px ${accentColor}25` }}>
-                  <svg className="w-4 h-4" fill="none" stroke={accentColor} viewBox="0 0 24 24" strokeWidth="2.2">
+                <div className="text-[10px] uppercase tracking-[0.08em] font-semibold text-[#5e6b79]">{t("avgProfitMargin")}</div>
+                <span style={{ color: accentColor }}>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                   </svg>
-                </div>
+                </span>
               </div>
-
-              <div className="text-2xl font-black tracking-tight mb-0.5" style={{ color: accentColor, textShadow: `0 0 20px ${accentColor}40` }}>
+              <div className="text-2xl font-black tracking-tight tabular-nums mb-0.5" style={{ color: accentColor, letterSpacing: "-0.02em" }}>
                 {avgMargin !== null ? `${avgMargin.toFixed(1)}%` : "—"}
               </div>
-
-              <div className="text-[11px] text-[#6b7785] mb-2">
+              <div className="text-[11px] text-[#5e6b79] mb-2">
                 {t("acrossPricedProducts", { n: withPricing.length, s: withPricing.length !== 1 ? "s" : "" })}
               </div>
-
               <div className="flex items-center gap-1.5">
                 {trendUp && (
                   <svg className="w-3.5 h-3.5" fill="none" stroke={accentColor} viewBox="0 0 24 24" strokeWidth="3">
@@ -815,7 +813,7 @@ function Dashboard() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M20 12H4" />
                   </svg>
                 )}
-                <span className="text-[11px] font-bold" style={{ color: accentColor }}>
+                <span className="text-[11px] font-semibold" style={{ color: accentColor }}>
                   {trendUp   ? t("trendVsOlderUp",   { pct: Math.abs(trend).toFixed(1) }) :
                    trendDown ? t("trendVsOlderDown", { pct: Math.abs(trend).toFixed(1) }) :
                                t("stableMargin")}
@@ -830,7 +828,7 @@ function Dashboard() {
       {/* ── Recent Products ── */}
       <div
         className="card rounded-xl overflow-hidden"
-        style={{ animation: "fadeUp 0.6s ease-out 0.7s backwards" }}
+        style={{ animation: "fadeUp 0.45s cubic-bezier(0.16,1,0.3,1) 0.7s backwards" }}
       >
         {/* Table header bar */}
         <div className="flex items-center justify-between px-5 py-4"
@@ -864,62 +862,42 @@ function Dashboard() {
         </div>
 
         {/* Filter tabs */}
-        <div className="flex items-center gap-1.5 px-5 py-3 flex-wrap"
-          style={{ borderBottom: "1px solid rgba(80,160,250,0.08)" }}
-        >
+        <div className="flex items-center px-5 border-b" style={{ borderColor: "rgba(77,158,248,0.1)" }}>
           {filterTabs.map(tab => {
             const active = statusFilter === tab.key;
             const accent = tab.key === "pending" ? "#f59e0b"
               : tab.key === "published" ? "#22c55e"
               : tab.key === "blocked" ? "#ef4444"
               : tab.key === "out_of_stock" ? "#a78bfa"
-              : "#50A0FA";
+              : "#4D9EF8";
             return (
               <button
                 key={tab.key}
                 onClick={() => { setStatusFilter(tab.key); setPage(1); }}
-                className="flex items-center gap-1.5 h-7 px-3 rounded-lg text-[11px] font-bold transition-all duration-150"
-                style={active ? {
-                  background: accent,
-                  color: "#0d1117",
-                  border: `1px solid ${accent}`,
-                  boxShadow: `0 0 10px ${accent}50`,
-                } : {
-                  background: "rgba(255,255,255,0.03)",
-                  color: "#6b7785",
-                  border: "1px solid rgba(255,255,255,0.06)",
-                  cursor: "pointer",
-                }}
+                className="flex items-center gap-1.5 px-3 py-2.5 text-[11px] font-semibold border-b-2 -mb-px transition-all duration-150 whitespace-nowrap"
+                style={active
+                  ? { borderColor: accent, color: "#e8ecf2" }
+                  : { borderColor: "transparent", color: "#5e6b79" }
+                }
+                onMouseEnter={e => { if (!active) e.currentTarget.style.color = "#9ba8b6"; }}
+                onMouseLeave={e => { if (!active) e.currentTarget.style.color = "#5e6b79"; }}
               >
                 {tab.label}
-                <span
-                  className="text-[10px] font-bold px-1.5 py-0.5 rounded"
-                  style={active
-                    ? { background: "rgba(0,0,0,0.2)", color: "#0d1117" }
-                    : { background: "rgba(255,255,255,0.06)", color: "#4a5568" }
-                  }
-                >
+                <span className="tabular-nums text-[10px]" style={{ color: active ? accent : "#3a4558" }}>
                   {tab.count}
                 </span>
               </button>
             );
           })}
 
-          {/* Sort by latest update — pushed to the right */}
+          {/* Sort by latest — pushed right */}
           <button
             onClick={() => { setSortCol("updated"); setSortDir("desc"); setPage(1); }}
-            className="ml-auto flex items-center gap-1.5 h-7 px-3 rounded-lg text-[11px] font-bold transition-all duration-150"
-            style={sortCol === "updated" ? {
-              background: "rgba(80,160,250,0.15)",
-              color: "#50A0FA",
-              border: "1px solid rgba(80,160,250,0.4)",
-              boxShadow: "0 0 10px rgba(80,160,250,0.2)",
-            } : {
-              background: "rgba(255,255,255,0.03)",
-              color: "#6b7785",
-              border: "1px solid rgba(255,255,255,0.06)",
-              cursor: "pointer",
-            }}
+            className="ml-auto flex items-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-semibold transition-all duration-150"
+            style={sortCol === "updated"
+              ? { background: "rgba(77,158,248,0.12)", color: "#4D9EF8", border: "1px solid rgba(77,158,248,0.25)" }
+              : { background: "transparent", color: "#5e6b79", border: "1px solid transparent" }
+            }
           >
             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -1060,25 +1038,20 @@ function Dashboard() {
                     </td>
 
                     {/* Margin */}
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
                       {profit !== null ? (
-                        <div className="leading-tight">
-                          <div className="text-[13px] font-bold text-green-400">
+                        <div className="inline-flex flex-col items-end gap-px">
+                          <span className="text-[13px] font-bold tabular-nums text-green-400 leading-none">
                             +${profit.toFixed(2)}
-                          </div>
+                          </span>
                           {exchangeRate && (
-                            <div className="text-[10px] text-green-600">
+                            <span className="text-[10px] tabular-nums leading-none" style={{ color: "#4a7a4a" }}>
                               +{(Math.round(profit * exchangeRate / 100) * 100).toLocaleString()} COP
-                            </div>
-                          )}
-                          {profitPct !== null && (
-                            <div className="text-[10px] text-[#6b7785]">
-                              {profitPct.toFixed(1)}% {t("markupSuffix")}
-                            </div>
+                            </span>
                           )}
                         </div>
                       ) : (
-                        <span className="text-[#4a5568]">—</span>
+                        <span className="text-[#5e6b79]">—</span>
                       )}
                     </td>
 

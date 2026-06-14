@@ -321,32 +321,40 @@ function Products() {
       </div>
 
       {/* Filter tabs */}
-      <div className="flex items-center gap-2 mb-4 flex-wrap">
-        {["all", "pending", "published", "blocked", "failed"].map((k) => (
-          <button
-            key={k}
-            onClick={() => setFilter(k)}
-            className={
-              "px-3 py-1.5 rounded-lg text-xs font-medium transition-all " +
-              (filter === k ? "text-white" : "text-[#a0adbb] hover:text-white")
-            }
-            style={
-              filter === k
-                ? { background: "#50A0FA", color: "#0d1117", boxShadow: "0 0 14px rgba(80,160,250,0.4)" }
-                : { background: "rgba(80,160,250,0.06)", border: "1px solid rgba(80,160,250,0.15)" }
-            }
-          >
-            {k === "all" ? t("filterAll") : k === "failed" ? t("syncFailedLabel") : t(k)} ({counts[k]})
-          </button>
-        ))}
+      <div className="flex items-center gap-0 mb-4 border-b" style={{ borderColor: "rgba(77,158,248,0.1)" }}>
+        {["all", "pending", "published", "blocked", "failed"].map((k) => {
+          const label = k === "all" ? t("filterAll") : k === "failed" ? t("syncFailedLabel") : t(k);
+          const isActive = filter === k;
+          return (
+            <button
+              key={k}
+              onClick={() => setFilter(k)}
+              className="px-3 py-2 text-[12px] font-semibold border-b-2 -mb-px transition-all duration-150 whitespace-nowrap"
+              style={isActive
+                ? { borderColor: "#4D9EF8", color: "#e8ecf2" }
+                : { borderColor: "transparent", color: "#5e6b79" }
+              }
+              onMouseEnter={e => { if (!isActive) e.currentTarget.style.color = "#9ba8b6"; }}
+              onMouseLeave={e => { if (!isActive) e.currentTarget.style.color = "#5e6b79"; }}
+            >
+              {label}
+              <span className="ml-1.5 tabular-nums" style={{ color: isActive ? "#4D9EF8" : "#3a4558" }}>
+                {counts[k]}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Search */}
       <div
-        className="card rounded-xl px-4 py-2.5 mb-4 flex items-center gap-2"
+        className="card rounded-xl px-3 py-2.5 mb-4 flex items-center gap-2"
         style={{ animation: "fadeUp 0.5s ease-out 0.1s backwards" }}
       >
-        <span className="text-[#6b7785]">🔍</span>
+        <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{ color: "#5e6b79" }}>
+          <circle cx="11" cy="11" r="7" />
+          <path strokeLinecap="round" d="m21 21-4.35-4.35" />
+        </svg>
         <input
           type="text"
           value={search}
@@ -479,25 +487,20 @@ function Products() {
                     </td>
 
                     {/* Margin */}
-                    <td className="p-3 text-right">
+                    <td className="p-3 text-right whitespace-nowrap">
                       {profit !== null ? (
-                        <div className="leading-tight">
-                          <div className="text-[13px] font-bold text-green-400">
+                        <div className="inline-flex flex-col items-end gap-px">
+                          <span className="text-[13px] font-bold tabular-nums text-green-400 leading-none">
                             +${profit.toFixed(2)}
-                          </div>
+                          </span>
                           {exchangeRate && (
-                            <div className="text-[10px] text-green-600">
+                            <span className="text-[10px] tabular-nums leading-none" style={{ color: "#4a7a4a" }}>
                               +{(Math.round(profit * exchangeRate / 100) * 100).toLocaleString()} COP
-                            </div>
-                          )}
-                          {profitPct !== null && (
-                            <div className="text-[10px] text-[#6b7785]">
-                              {profitPct.toFixed(1)}% {t("markupSuffix")}
-                            </div>
+                            </span>
                           )}
                         </div>
                       ) : (
-                        <span className="text-[#4a5568]">—</span>
+                        <span className="text-[#5e6b79]">—</span>
                       )}
                     </td>
                     <td className="p-3 text-right text-[#a0adbb]">{p.stock}</td>

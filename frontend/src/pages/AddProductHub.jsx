@@ -26,7 +26,7 @@ function OptionCard({ icon, title, description, badge, onClick, className = "" }
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-5">
           {/* Icon */}
-          <div className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform duration-300 group-hover:scale-110"
+          <div className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform duration-200 group-hover:scale-105"
             style={{ background: "rgba(80,160,250,0.1)", border: "1px solid rgba(80,160,250,0.2)" }}>
             {icon}
           </div>
@@ -36,8 +36,8 @@ function OptionCard({ icon, title, description, badge, onClick, className = "" }
             <div className="flex items-center gap-2 mb-1.5">
               <h3 className="text-lg font-bold text-white">{title}</h3>
               {badge && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                  style={{ background: "rgba(80,160,250,0.15)", color: "#50A0FA", border: "1px solid rgba(80,160,250,0.25)" }}>
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md"
+                  style={{ background: "rgba(77,158,248,0.12)", color: "#4D9EF8", border: "1px solid rgba(77,158,248,0.22)" }}>
                   {badge}
                 </span>
               )}

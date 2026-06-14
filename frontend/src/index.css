@@ -11,63 +11,100 @@ html, body, #root {
   min-height: 100vh;
 }
 
-/* App-wide background gradient */
+/* App-wide background */
 .bg-app {
-  background:
-    radial-gradient(ellipse at top, #161e2e 0%, #0d1117 50%),
-    #0d1117;
+  background: #0b0f18;
 }
 
-/* Glassmorphism card style used everywhere */
+/* Glassmorphism card — section/content containers */
 .card {
   background: linear-gradient(135deg, rgba(80,160,250,0.05) 0%, rgba(16,21,31,0.6) 100%);
   border: 1px solid rgba(80,160,250,0.15);
   backdrop-filter: blur(10px);
-  transition: all 0.3s;
+  transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
 }
 .card:hover {
-  border-color: rgba(80,160,250,0.4);
+  border-color: rgba(80,160,250,0.35);
 }
 
-/* Animations */
+/* ─── Animations ─────────────────────────────────────── */
+
+/* Page-load entrance — 400ms, exponential ease-out feels intentional not floaty */
 @keyframes fadeUp {
-  from { opacity: 0; transform: translateY(14px); }
+  from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
 @keyframes spin {
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
 }
-@keyframes logoPulse {
-  0%, 100% { box-shadow: 0 0 24px rgba(80,160,250,0.5); }
-  50%      { box-shadow: 0 0 40px rgba(80,160,250,0.9); }
-}
-@keyframes floatA {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(30px); }
-}
-@keyframes floatB {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-30px); }
+
+/* Skeleton shimmer for loading states */
+@keyframes shimmer {
+  from { background-position: -200% center; }
+  to   { background-position: 200% center; }
 }
 
-.fade-up      { animation: fadeUp 0.7s ease-out backwards; }
-.fade-up-1    { animation: fadeUp 0.7s ease-out 0.15s backwards; }
-.fade-up-2    { animation: fadeUp 0.7s ease-out 0.30s backwards; }
-.fade-up-3    { animation: fadeUp 0.7s ease-out 0.45s backwards; }
-.logo-pulse   { animation: logoPulse 3s ease-in-out infinite; }
-.glow-float-a { animation: floatA 7s ease-in-out infinite; }
-.glow-float-b { animation: floatB 9s ease-in-out infinite; }
+/* ─── Utility classes ─────────────────────────────────── */
 
-/* Scrollbar */
+.fade-up   { animation: fadeUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
+.fade-up-1 { animation: fadeUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.1s backwards; }
+.fade-up-2 { animation: fadeUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.2s backwards; }
+.fade-up-3 { animation: fadeUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.3s backwards; }
+
+/* Skeleton shimmer tile — use on placeholder content during load */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,0.04) 0%,
+    rgba(255,255,255,0.08) 50%,
+    rgba(255,255,255,0.04) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+  border-radius: 6px;
+}
+
+/* Tactile press feedback on interactive elements */
+.press-scale:active { transform: scale(0.97); transition: transform 100ms ease-out; }
+
+/* ─── Scrollbar ──────────────────────────────────────── */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: #10151f; }
 ::-webkit-scrollbar-thumb { background: #1f3a5f; border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: #50A0FA; }
 
-/* Input focus ring (matches the blue) */
+/* ─── Input focus ring ───────────────────────────────── */
 input:focus, textarea:focus, select:focus {
   outline: none;
   border-color: rgba(80,160,250,0.6) !important;
-  box-shadow: 0 0 0 3px rgba(80,160,250,0.12);
+  box-shadow: 0 0 0 3px rgba(80,160,250,0.10);
+}
+
+/* ─── Focus-visible keyboard nav ─────────────────────── */
+:focus-visible {
+  outline: 2px solid rgba(77,158,248,0.7);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ─── Respect reduced-motion preference ─────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .fade-up,
+  .fade-up-1,
+  .fade-up-2,
+  .fade-up-3 {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+  .skeleton {
+    animation: none;
+  }
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }
