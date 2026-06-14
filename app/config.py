@@ -1,15 +1,15 @@
-﻿"""Loads settings - temporarily hardcoded for testing."""
+import os
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    DATABASE_URL: str = "postgresql://postgres:mysecretpassword@localhost:5432/meli_sync"
-    RAPIDAPI_KEY: str = "ec4dddb47cmsh91ae4af235f0349p18e772jsn42aa656e6222"
-    RAPIDAPI_HOST: str = "real-time-amazon-data.p.rapidapi.com"
-    JWT_SECRET: str = "dev-secret"
+    DATABASE_URL: str = os.environ.get("DATABASE_URL", "sqlite:///./meli_sync.db")
+    SCRAPEDO_TOKEN: str = os.environ.get("SCRAPEDO_TOKEN", "")
+    JWT_SECRET: str = os.environ.get("JWT_SECRET", "dev-secret")
 
     class Config:
-        pass  # Don't load from .env file for now
+        env_file = ".env"
+        extra = "ignore"
 
 
 settings = Settings()

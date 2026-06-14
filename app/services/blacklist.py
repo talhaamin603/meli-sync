@@ -56,11 +56,11 @@ class BlacklistFilter:
         'education' - only the standalone word 'cat'.
         """
         if self.term_count == 0:
-            return {"blocked": False, "reason": None}
+            return {"blocked": False, "reason": None, "term": None}
 
         clean = normalize_text(title)
         if not clean:
-            return {"blocked": False, "reason": None}
+            return {"blocked": False, "reason": None, "term": None}
 
         # pad with spaces so word-boundary check works at start/end
         padded = f" {clean} "
@@ -75,5 +75,16 @@ class BlacklistFilter:
                 return {
                     "blocked": True,
                     "reason": f"matched blacklisted term: '{original}'",
+                    "term": original,
                 }
-        return {"blocked": False, "reason": None}
+        return {"blocked": False, "reason": None, "term": None}
+
+    def check_product(self, title: str, description: str = "") -> dict:
+        """
+        Check a product's title AND description.
+        Returns the first match found, title checked first.
+        """
+        result = self.check(title)
+        if result["blocked"]:
+            return result
+        return self.check(description or "")

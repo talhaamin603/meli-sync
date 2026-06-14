@@ -1,0 +1,4 @@
+asin,title,description,image_url,amazon_price_usd,stock,is_prime
+B00EXAMPLE1,CeraVe Hydrating Facial Cleanser 16 oz,Gentle non-foaming face wash for normal to dry skin with ceramides and hyaluronic acid,https://example.com/image1.jpg,16.99,50,true
+B00EXAMPLE2,The Ordinary Niacinamide 10% + Zinc 1% Serum,Oil control and blemish-reducing facial serum 30ml,https://example.com/image2.jpg,11.50,80,true
+B00EXAMPLE3,Neutrogena Hydro Boost Water Gel Moisturizer,Hyaluronic acid face moisturizer for dry skin 1.7 oz,https://example.com/image3.jpg,19.99,40,true
