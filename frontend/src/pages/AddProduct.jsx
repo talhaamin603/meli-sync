@@ -340,149 +340,155 @@ function AddProduct() {
         <p className="text-sm text-[#6b7785]">{t("addProductSubtitle")}</p>
       </div>
 
-      <form
-        onSubmit={handleSubmit}
-        className="card rounded-xl p-6 max-w-2xl space-y-5"
-        style={{ animation: "fadeUp 0.6s ease-out 0.1s backwards" }}
-      >
-        {/* ASIN + Price */}
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="ASIN" required>
-            <input
-              value={form.asin}
-              onChange={(e) => update("asin", e.target.value)}
-              placeholder="B08T8L371P"
-              className={iClass + " font-mono"}
-              style={iStyle}
-            />
-          </Field>
-          <Field label={t("priceUsd")} required>
-            <input
-              type="number" step="0.01"
-              value={form.amazon_price_usd}
-              onChange={(e) => update("amazon_price_usd", e.target.value)}
-              placeholder="16.99"
-              className={iClass}
-              style={iStyle}
-            />
-          </Field>
-        </div>
+      <form onSubmit={handleSubmit}>
+        <div className="grid grid-cols-2 gap-5" style={{ animation: "fadeUp 0.6s ease-out 0.1s backwards" }}>
 
-        {/* Title */}
-        <Field label={t("title")} required>
-          <input
-            value={form.title}
-            onChange={(e) => update("title", e.target.value)}
-            className={iClass}
-            style={iStyle}
-          />
-        </Field>
+          {/* ── LEFT CARD: Product Info ── */}
+          <div className="card rounded-xl p-6 space-y-5">
+            {/* ASIN + Price */}
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="ASIN" required>
+                <input
+                  value={form.asin}
+                  onChange={(e) => update("asin", e.target.value)}
+                  placeholder="B08T8L371P"
+                  className={iClass + " font-mono"}
+                  style={iStyle}
+                />
+              </Field>
+              <Field label={t("priceUsd")} required>
+                <input
+                  type="number" step="0.01"
+                  value={form.amazon_price_usd}
+                  onChange={(e) => update("amazon_price_usd", e.target.value)}
+                  placeholder="16.99"
+                  className={iClass}
+                  style={iStyle}
+                />
+              </Field>
+            </div>
 
-        {/* Brand + Rating */}
-        <div className="grid grid-cols-3 gap-4">
-          <div className="col-span-1">
-            <Field label="Brand Name">
+            {/* Title */}
+            <Field label={t("title")} required>
               <input
-                value={form.brand}
-                onChange={(e) => update("brand", e.target.value)}
-                placeholder="e.g. Sony"
+                value={form.title}
+                onChange={(e) => update("title", e.target.value)}
                 className={iClass}
                 style={iStyle}
               />
             </Field>
-          </div>
-          <Field label="Rating (0–5)">
-            <input
-              type="number" step="0.1" min="0" max="5"
-              value={form.rating}
-              onChange={(e) => update("rating", e.target.value)}
-              placeholder="4.5"
-              className={iClass}
-              style={iStyle}
-            />
-          </Field>
-          <Field label="Total Ratings">
-            <input
-              type="number" min="0"
-              value={form.total_ratings}
-              onChange={(e) => update("total_ratings", e.target.value)}
-              placeholder="2 712"
-              className={iClass}
-              style={iStyle}
-            />
-          </Field>
-        </div>
 
-        {/* Description */}
-        <Field label={t("description")}>
-          <textarea
-            value={form.description}
-            onChange={(e) => update("description", e.target.value)}
-            rows={3}
-            className={iClass + " resize-y"}
-            style={iStyle}
-          />
-        </Field>
-
-        {/* Category */}
-        <CategoryPicker
-          categories={categories}
-          mainId={mainId} subId={subId}
-          onMain={setMainId} onSub={setSubId}
-        />
-
-        {/* Image URLs */}
-        <div
-          className="rounded-xl p-4"
-          style={{ background: "rgba(80,160,250,0.03)", border: "1px solid rgba(80,160,250,0.1)" }}
-        >
-          <ImageURLManager
-            urls={urls}
-            onChange={handleUrlChange}
-            onLoadErrors={setImgLoadErrors}
-            error={imgError}
-          />
-        </div>
-
-        {/* Stock + Prime */}
-        <div className="grid grid-cols-2 gap-4 items-end">
-          <Field label={t("stock")}>
-            <input
-              type="number"
-              value={form.stock}
-              onChange={(e) => update("stock", e.target.value)}
-              className={iClass}
-              style={iStyle}
-            />
-          </Field>
-          <div className="pb-1">
-            <label className="flex items-center gap-2 cursor-pointer text-sm text-[#e8ecf2]">
-              <input
-                type="checkbox"
-                checked={form.is_prime}
-                onChange={(e) => update("is_prime", e.target.checked)}
-                className="w-4 h-4 accent-[#50A0FA]"
-              />
-              {t("primeProduct")}
-            </label>
-          </div>
-        </div>
-
-        {/* Submit */}
-        <div className="flex items-center gap-4 pt-1">
-          <button
-            type="submit"
-            disabled={saving}
-            className="px-5 py-2.5 rounded-lg font-medium text-sm transition-all hover:-translate-y-0.5 disabled:opacity-50"
-            style={{ background: "#50A0FA", color: "#0d1117", boxShadow: "0 0 18px rgba(80,160,250,0.45)" }}
-          >
-            {saving ? t("saving") : t("add") + " →"}
-          </button>
-          {message && (
-            <div className="px-3 py-2 rounded-lg text-xs" style={{ background: msgBg, color: msgFg }}>
-              {message.text}
+            {/* Brand + Rating */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="col-span-1">
+                <Field label="Brand Name">
+                  <input
+                    value={form.brand}
+                    onChange={(e) => update("brand", e.target.value)}
+                    placeholder="e.g. Sony"
+                    className={iClass}
+                    style={iStyle}
+                  />
+                </Field>
+              </div>
+              <Field label="Rating (0–5)">
+                <input
+                  type="number" step="0.1" min="0" max="5"
+                  value={form.rating}
+                  onChange={(e) => update("rating", e.target.value)}
+                  placeholder="4.5"
+                  className={iClass}
+                  style={iStyle}
+                />
+              </Field>
+              <Field label="Total Ratings">
+                <input
+                  type="number" min="0"
+                  value={form.total_ratings}
+                  onChange={(e) => update("total_ratings", e.target.value)}
+                  placeholder="2 712"
+                  className={iClass}
+                  style={iStyle}
+                />
+              </Field>
             </div>
-          )}
+
+            {/* Description */}
+            <Field label={t("description")}>
+              <textarea
+                value={form.description}
+                onChange={(e) => update("description", e.target.value)}
+                rows={5}
+                className={iClass + " resize-y"}
+                style={iStyle}
+              />
+            </Field>
+          </div>
+
+          {/* ── RIGHT CARD: Images, Category, Stock ── */}
+          <div className="card rounded-xl p-6 space-y-5 flex flex-col">
+            {/* Image URLs */}
+            <div
+              className="rounded-xl p-4"
+              style={{ background: "rgba(80,160,250,0.03)", border: "1px solid rgba(80,160,250,0.1)" }}
+            >
+              <ImageURLManager
+                urls={urls}
+                onChange={handleUrlChange}
+                onLoadErrors={setImgLoadErrors}
+                error={imgError}
+              />
+            </div>
+
+            {/* Category */}
+            <CategoryPicker
+              categories={categories}
+              mainId={mainId} subId={subId}
+              onMain={setMainId} onSub={setSubId}
+            />
+
+            {/* Stock + Prime */}
+            <div className="grid grid-cols-2 gap-4 items-end">
+              <Field label={t("stock")}>
+                <input
+                  type="number"
+                  value={form.stock}
+                  onChange={(e) => update("stock", e.target.value)}
+                  className={iClass}
+                  style={iStyle}
+                />
+              </Field>
+              <div className="pb-1">
+                <label className="flex items-center gap-2 cursor-pointer text-sm text-[#e8ecf2]">
+                  <input
+                    type="checkbox"
+                    checked={form.is_prime}
+                    onChange={(e) => update("is_prime", e.target.checked)}
+                    className="w-4 h-4 accent-[#50A0FA]"
+                  />
+                  {t("primeProduct")}
+                </label>
+              </div>
+            </div>
+
+            {/* Submit */}
+            <div className="flex items-center gap-4 pt-1 mt-auto">
+              <button
+                type="submit"
+                disabled={saving}
+                className="px-5 py-2.5 rounded-lg font-medium text-sm transition-all hover:-translate-y-0.5 disabled:opacity-50"
+                style={{ background: "#50A0FA", color: "#0d1117", boxShadow: "0 0 18px rgba(80,160,250,0.45)" }}
+              >
+                {saving ? t("saving") : t("add") + " →"}
+              </button>
+              {message && (
+                <div className="px-3 py-2 rounded-lg text-xs" style={{ background: msgBg, color: msgFg }}>
+                  {message.text}
+                </div>
+              )}
+            </div>
+          </div>
+
         </div>
       </form>
     </div>

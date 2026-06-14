@@ -1,11 +1,11 @@
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
-function OptionCard({ icon, title, description, badge, onClick }) {
+function OptionCard({ icon, title, description, badge, onClick, className = "" }) {
   return (
     <button
       onClick={onClick}
-      className="group relative w-full text-left rounded-2xl p-7 transition-all duration-300 hover:-translate-y-1"
+      className={`group relative w-full text-left rounded-2xl p-7 transition-all duration-300 hover:-translate-y-1 ${className}`}
       style={{
         background: "linear-gradient(135deg, rgba(80,160,250,0.05) 0%, rgba(13,17,23,0.8) 100%)",
         border: "1px solid rgba(80,160,250,0.12)",
@@ -63,15 +63,15 @@ export default function AddProductHub() {
   const { t } = useTranslation();
 
   return (
-    <div className="max-w-2xl">
+    <div>
       {/* Header */}
       <div className="mb-8 fade-up">
         <h1 className="text-2xl font-medium text-white mb-1">{t("addProductsTitle")}</h1>
         <p className="text-sm text-[#6b7785]">{t("addProductsSubtitle")}</p>
       </div>
 
-      {/* Option cards */}
-      <div className="space-y-4">
+      {/* Option cards — 2 per row */}
+      <div className="grid grid-cols-2 gap-4">
         <OptionCard
           onClick={() => navigate("/add/manual")}
           icon={
@@ -125,6 +125,7 @@ export default function AddProductHub() {
 
         <OptionCard
           onClick={() => navigate("/add/url")}
+          className="col-span-2"
           icon={
             <svg width="22" height="22" fill="none" stroke="#50A0FA" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>

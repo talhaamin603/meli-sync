@@ -21,6 +21,44 @@ def reschedule_meli_sync(seconds: int):
         print(f"[scheduler] ml sync rescheduled: every {seconds}s")
 
 
+def pause_amazon_sync():
+    if _scheduler and _scheduler.running:
+        try:
+            _scheduler.pause_job("amazon_sync")
+            print("[scheduler] amazon sync paused")
+        except Exception as e:
+            print(f"[scheduler] pause amazon sync error: {e}")
+
+
+def resume_amazon_sync(seconds: int):
+    if _scheduler and _scheduler.running:
+        try:
+            _scheduler.reschedule_job("amazon_sync", trigger="interval", seconds=seconds)
+            _scheduler.resume_job("amazon_sync")
+            print(f"[scheduler] amazon sync resumed: every {seconds}s")
+        except Exception as e:
+            print(f"[scheduler] resume amazon sync error: {e}")
+
+
+def pause_meli_sync():
+    if _scheduler and _scheduler.running:
+        try:
+            _scheduler.pause_job("ml_sync")
+            print("[scheduler] ml sync paused")
+        except Exception as e:
+            print(f"[scheduler] pause ml sync error: {e}")
+
+
+def resume_meli_sync(seconds: int):
+    if _scheduler and _scheduler.running:
+        try:
+            _scheduler.reschedule_job("ml_sync", trigger="interval", seconds=seconds)
+            _scheduler.resume_job("ml_sync")
+            print(f"[scheduler] ml sync resumed: every {seconds}s")
+        except Exception as e:
+            print(f"[scheduler] resume ml sync error: {e}")
+
+
 def run_amazon_sync():
     """Re-fetch price, rating and prime status from Amazon for every active product."""
     from app.services.amazon import fetch_product_for_sync, is_configured

@@ -3,7 +3,12 @@ from pydantic import BaseModel
 from sqlmodel import Session, select
 from app.database import get_session
 from app.models import SyncHistory, Setting, Product
-from app.services.scheduler import run_daily_sync, run_amazon_sync, reschedule_amazon_sync, reschedule_meli_sync
+from app.services.scheduler import (
+    run_daily_sync, run_amazon_sync,
+    reschedule_amazon_sync, reschedule_meli_sync,
+    pause_amazon_sync, pause_meli_sync,
+    resume_amazon_sync, resume_meli_sync,
+)
 
 router = APIRouter(prefix="/api/sync", tags=["sync"])
 
@@ -22,6 +27,8 @@ class SyncSettingsBody(BaseModel):
     amazon_unit: str
     meli_value: int
     meli_unit: str
+    amazon_enabled: bool = True
+    meli_enabled: bool = True
 
 
 def _get_setting(session: Session, key: str, default: str) -> str:
@@ -48,10 +55,12 @@ def get_sync_settings(session: Session = Depends(get_session)):
         "amazon": {
             "value": int(_get_setting(session, "amazon_sync_value", "24")),
             "unit": _get_setting(session, "amazon_sync_unit", "hours"),
+            "enabled": _get_setting(session, "amazon_auto_enabled", "1") == "1",
         },
         "meli": {
             "value": int(_get_setting(session, "meli_sync_value", "24")),
             "unit": _get_setting(session, "meli_sync_unit", "hours"),
+            "enabled": _get_setting(session, "meli_auto_enabled", "1") == "1",
         },
         "product_count": product_count,
     }
@@ -76,17 +85,28 @@ def save_sync_settings(body: SyncSettingsBody, session: Session = Depends(get_se
 
     _upsert_setting(session, "amazon_sync_value", str(body.amazon_value))
     _upsert_setting(session, "amazon_sync_unit", body.amazon_unit)
+    _upsert_setting(session, "amazon_auto_enabled", "1" if body.amazon_enabled else "0")
     _upsert_setting(session, "meli_sync_value", str(body.meli_value))
     _upsert_setting(session, "meli_sync_unit", body.meli_unit)
+    _upsert_setting(session, "meli_auto_enabled", "1" if body.meli_enabled else "0")
     session.commit()
 
-    reschedule_amazon_sync(amazon_secs)
-    reschedule_meli_sync(meli_secs)
+    if body.amazon_enabled:
+        resume_amazon_sync(amazon_secs)
+    else:
+        pause_amazon_sync()
+
+    if body.meli_enabled:
+        resume_meli_sync(meli_secs)
+    else:
+        pause_meli_sync()
 
     return {
         "ok": True,
         "amazon_seconds": amazon_secs,
+        "amazon_enabled": body.amazon_enabled,
         "meli_seconds": meli_secs,
+        "meli_enabled": body.meli_enabled,
     }
 
 

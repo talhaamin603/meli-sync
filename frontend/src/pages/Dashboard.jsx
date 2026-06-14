@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
-import { getProducts, getExchangeRate, getSyncHistory, getMarginRules } from "../api.js";
+import { getProducts, getExchangeRate, getSyncHistory, getMarginRules, getSyncSettings } from "../api.js";
 import { calcPrice } from "../utils/pricing.js";
 
 /* ─── Status badge ─────────────────────────────────────────── */
@@ -171,6 +171,7 @@ function Dashboard() {
   const [exchangeRate, setExchangeRate] = useState(null);
   const [rules, setRules] = useState([]);
   const [syncHistory, setSyncHistory] = useState([]);
+  const [autoSync, setAutoSync] = useState({ amazonEnabled: true, meliEnabled: true });
   const [sortCol, setSortCol] = useState(null);
   const [sortDir, setSortDir] = useState("asc");
   const PAGE_SIZE = 10;
@@ -206,6 +207,12 @@ function Dashboard() {
       .finally(() => setLoading(false));
     getSyncHistory()
       .then((data) => setSyncHistory(Array.isArray(data) ? data : []))
+      .catch(() => {});
+    getSyncSettings()
+      .then((s) => setAutoSync({
+        amazonEnabled: s.amazon?.enabled !== false,
+        meliEnabled: s.meli?.enabled !== false,
+      }))
       .catch(() => {});
     // eslint-disable-next-line
   }, []);
@@ -328,6 +335,54 @@ function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* ── Auto Sync OFF banner ── */}
+      {(!autoSync.amazonEnabled || !autoSync.meliEnabled) && (
+        <div
+          className="rounded-xl px-4 py-3 mb-2 flex items-center justify-between gap-4 fade-up"
+          style={{
+            background: "rgba(245,158,11,0.07)",
+            border: "1px solid rgba(245,158,11,0.25)",
+          }}
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: "rgba(245,158,11,0.12)" }}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="#f59e0b" viewBox="0 0 24 24" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round"
+                  d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm font-semibold" style={{ color: "#f59e0b" }}>
+                {t("autoSyncOffBannerTitle")}
+              </p>
+              <p className="text-xs text-[#6b7785] mt-0.5">
+                {!autoSync.amazonEnabled && !autoSync.meliEnabled
+                  ? t("autoSyncBothOffDesc")
+                  : !autoSync.amazonEnabled
+                  ? t("autoSyncAmazonOffDesc")
+                  : t("autoSyncMeliOffDesc")}
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/sync"
+            className="text-xs font-bold px-3 py-1.5 rounded-lg flex-shrink-0 transition-all duration-200 whitespace-nowrap"
+            style={{
+              background: "rgba(245,158,11,0.12)",
+              color: "#f59e0b",
+              border: "1px solid rgba(245,158,11,0.3)",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(245,158,11,0.2)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(245,158,11,0.12)"; }}
+          >
+            {t("goToSyncBtn")}
+          </Link>
+        </div>
+      )}
 
       {/* ── Stat Cards ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">

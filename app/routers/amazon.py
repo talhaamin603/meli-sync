@@ -267,9 +267,25 @@ def add_from_search(body: AddFromSearchBody, session: Session = Depends(get_sess
             results.append({"asin": item.asin, "title": item.title, "status": "skipped", "reason": "Already exists"})
             summary["skipped"] += 1
             continue
-        # Check title against blacklist before spending a credit on the full PDP fetch
+        # Check title against blacklist before spending a credit on the full PDP fetch.
+        # If blocked, save the product as blocked (visible in dashboard) but don't fetch full data.
         bl = blacklist.check_product(item.title, "")
         if bl["blocked"]:
+            p = Product(
+                asin=item.asin,
+                title=item.title,
+                image_url=item.image_url or "",
+                images=json.dumps([item.image_url]) if item.image_url else "[]",
+                amazon_price_usd=item.amazon_price_usd,
+                is_prime=item.is_prime,
+                category_id=body.category_id,
+                status="blocked",
+                block_reason=bl["reason"],
+                stock=10,
+                initial_stock=10,
+            )
+            session.add(p)
+            session.commit()
             results.append({"asin": item.asin, "title": item.title, "status": "blocked", "reason": bl["reason"]})
             summary["blocked"] += 1
             continue

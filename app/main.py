@@ -77,14 +77,21 @@ def on_startup():
 
         a_val, a_unit = _g("amazon_sync_value"), _g("amazon_sync_unit")
         m_val, m_unit = _g("meli_sync_value"), _g("meli_sync_unit")
+        a_enabled = _g("amazon_auto_enabled")
+        m_enabled = _g("meli_auto_enabled")
 
         if a_val and a_unit and a_unit in _UNIT_SECONDS:
             amazon_secs = int(a_val) * _UNIT_SECONDS[a_unit]
         if m_val and m_unit and m_unit in _UNIT_SECONDS:
             meli_secs = int(m_val) * _UNIT_SECONDS[m_unit]
 
-    from app.services.scheduler import start_scheduler
+    from app.services.scheduler import start_scheduler, pause_amazon_sync, pause_meli_sync
     start_scheduler(amazon_secs, meli_secs)
+
+    if a_enabled == "0":
+        pause_amazon_sync()
+    if m_enabled == "0":
+        pause_meli_sync()
 
 
 @app.get("/")

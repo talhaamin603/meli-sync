@@ -3,17 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { searchAmazon, addFromSearch, getCategories, getBlacklist } from "../api.js";
 
-function wordBoundaryPattern(term) {
-  const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return `(?<![a-zA-Z0-9])${escaped}(?![a-zA-Z0-9])`;
-}
-
-function isTitleBlocked(title, terms) {
+// Returns every blacklist term found in the title (simple substring match)
+function getMatchedTerms(title, terms) {
   const lc = (title || "").toLowerCase();
-  return terms.some(term => {
-    try { return new RegExp(wordBoundaryPattern(term.toLowerCase()), "i").test(lc); }
-    catch { return false; }
-  });
+  return terms.filter(term => lc.includes(term.toLowerCase()));
 }
 
 const PAGE_SIZE = 16;
@@ -41,94 +34,118 @@ function Stars({ rating }) {
 }
 
 // ── Single result row ─────────────────────────────────────────────────────────
-function ResultRow({ product, selected, onToggle, addedStatus, isBlocked }) {
+function ResultRow({ product, selected, onToggle, addedStatus, matchedTerms }) {
   const { asin, title, image_url, amazon_price_usd, rating, review_count, is_prime, is_sponsored, badge } = product;
-  const clickable = !addedStatus && !isBlocked;
+  const hasBlacklist = matchedTerms && matchedTerms.length > 0;
+  const clickable = !addedStatus;
 
-  const chipStatus = isBlocked && !addedStatus ? "blocked" : addedStatus;
-  const statusChip = chipStatus && (
+  const statusChip = addedStatus && (
     <span className="px-2 py-0.5 rounded-md text-[10px] font-bold shrink-0"
       style={{
-        background: chipStatus === "added" ? "rgba(34,197,94,0.15)" : chipStatus === "failed" || chipStatus === "blocked" ? "rgba(239,68,68,0.15)" : "rgba(107,119,133,0.15)",
-        color: chipStatus === "added" ? "#22c55e" : chipStatus === "failed" || chipStatus === "blocked" ? "#ef4444" : "#a0adbb",
-        border: `1px solid ${chipStatus === "added" ? "rgba(34,197,94,0.3)" : chipStatus === "failed" || chipStatus === "blocked" ? "rgba(239,68,68,0.3)" : "rgba(107,119,133,0.3)"}`,
+        background: addedStatus === "added" ? "rgba(34,197,94,0.15)" : addedStatus === "failed" ? "rgba(239,68,68,0.15)" : "rgba(107,119,133,0.15)",
+        color: addedStatus === "added" ? "#22c55e" : addedStatus === "failed" ? "#ef4444" : "#a0adbb",
+        border: `1px solid ${addedStatus === "added" ? "rgba(34,197,94,0.3)" : addedStatus === "failed" ? "rgba(239,68,68,0.3)" : "rgba(107,119,133,0.3)"}`,
       }}>
-      {chipStatus === "added" ? "Added" : chipStatus === "blocked" ? "Blocked" : chipStatus === "skipped" ? "Already added" : "Failed"}
+      {addedStatus === "added" ? "Added" : addedStatus === "skipped" ? "Already added" : "Failed"}
     </span>
   );
 
   return (
     <div
-      onClick={() => clickable && onToggle(asin)}
-      className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150"
+      className="rounded-xl overflow-hidden transition-all duration-150"
       style={{
-        background: selected
-          ? "linear-gradient(135deg, rgba(80,160,250,0.12), rgba(80,160,250,0.04))"
-          : "rgba(255,255,255,0.03)",
-        border: selected ? "1px solid rgba(80,160,250,0.5)" : "1px solid rgba(80,160,250,0.1)",
-        cursor: clickable ? "pointer" : "default",
-        opacity: (addedStatus || isBlocked) ? 0.65 : 1,
+        border: selected
+          ? "1px solid rgba(80,160,250,0.5)"
+          : hasBlacklist
+          ? "1px solid rgba(245,158,11,0.45)"
+          : "1px solid rgba(80,160,250,0.1)",
+        opacity: addedStatus ? 0.65 : 1,
       }}
     >
-      {/* Checkbox */}
+      {/* Main row */}
       <div
-        className="w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition-all"
+        onClick={() => clickable && onToggle(asin)}
+        className="flex items-center gap-3 px-3 py-2.5"
         style={{
-          background: selected ? "#50A0FA" : "rgba(13,17,23,0.8)",
-          border: selected ? "none" : "1px solid rgba(80,160,250,0.3)",
-          visibility: addedStatus ? "hidden" : "visible",
+          background: selected
+            ? "linear-gradient(135deg, rgba(80,160,250,0.12), rgba(80,160,250,0.04))"
+            : "rgba(255,255,255,0.03)",
+          cursor: clickable ? "pointer" : "default",
         }}
       >
-        {selected && (
-          <svg width="11" height="11" fill="none" stroke="#0d1117" viewBox="0 0 24 24" strokeWidth="3">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-          </svg>
-        )}
-      </div>
-
-      {/* Image */}
-      <div className="w-14 h-14 rounded-lg bg-white overflow-hidden shrink-0 flex items-center justify-center">
-        {image_url ? (
-          <img src={image_url} alt={title} className="w-full h-full object-contain p-1" />
-        ) : (
-          <span className="text-[#4a5568] text-[9px]">No image</span>
-        )}
-      </div>
-
-      {/* Title + meta */}
-      <div className="flex-1 min-w-0">
-        <p className="text-xs text-[#e8ecf2] leading-snug line-clamp-2" title={title}>{title}</p>
-        <div className="flex items-center gap-2 mt-1 flex-wrap">
-          {rating > 0 && (
-            <span className="flex items-center gap-1">
-              <Stars rating={rating} />
-              <span className="text-[10px] text-[#6b7785]">{rating.toFixed(1)}</span>
-              {review_count > 0 && (
-                <span className="text-[10px] text-[#4a5568]">
-                  ({review_count >= 1000 ? (review_count / 1000).toFixed(1) + "k" : review_count})
-                </span>
-              )}
-            </span>
+        {/* Checkbox */}
+        <div
+          className="w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition-all"
+          style={{
+            background: selected ? "#50A0FA" : "rgba(13,17,23,0.8)",
+            border: selected ? "none" : "1px solid rgba(80,160,250,0.3)",
+            visibility: addedStatus ? "hidden" : "visible",
+          }}
+        >
+          {selected && (
+            <svg width="11" height="11" fill="none" stroke="#0d1117" viewBox="0 0 24 24" strokeWidth="3">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
           )}
-          {is_prime && (
-            <span className="px-1.5 py-px rounded text-[9px] font-bold" style={{ background: "#00A8E0", color: "#fff" }}>prime</span>
-          )}
-          {badge && (
-            <span className="px-1.5 py-px rounded text-[9px] font-bold" style={{ background: "rgba(245,158,11,0.15)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.3)" }}>{badge}</span>
-          )}
-          {is_sponsored && (
-            <span className="text-[9px] text-[#4a5568]">Sponsored</span>
-          )}
-          <span className="text-[9px] text-[#4a5568] font-mono">{asin}</span>
         </div>
+
+        {/* Image */}
+        <div className="w-14 h-14 rounded-lg bg-white overflow-hidden shrink-0 flex items-center justify-center">
+          {image_url ? (
+            <img src={image_url} alt={title} className="w-full h-full object-contain p-1" />
+          ) : (
+            <span className="text-[#4a5568] text-[9px]">No image</span>
+          )}
+        </div>
+
+        {/* Title + meta */}
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-[#e8ecf2] leading-snug line-clamp-2" title={title}>{title}</p>
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
+            {rating > 0 && (
+              <span className="flex items-center gap-1">
+                <Stars rating={rating} />
+                <span className="text-[10px] text-[#6b7785]">{rating.toFixed(1)}</span>
+                {review_count > 0 && (
+                  <span className="text-[10px] text-[#4a5568]">
+                    ({review_count >= 1000 ? (review_count / 1000).toFixed(1) + "k" : review_count})
+                  </span>
+                )}
+              </span>
+            )}
+            {is_prime && (
+              <span className="px-1.5 py-px rounded text-[9px] font-bold" style={{ background: "#00A8E0", color: "#fff" }}>prime</span>
+            )}
+            {badge && (
+              <span className="px-1.5 py-px rounded text-[9px] font-bold" style={{ background: "rgba(245,158,11,0.15)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.3)" }}>{badge}</span>
+            )}
+            {is_sponsored && (
+              <span className="text-[9px] text-[#4a5568]">Sponsored</span>
+            )}
+            <span className="text-[9px] text-[#4a5568] font-mono">{asin}</span>
+          </div>
+        </div>
+
+        {statusChip}
+
+        {/* Price */}
+        <span className="text-sm font-bold shrink-0 w-20 text-right" style={{ color: "#50A0FA" }}>
+          {amazon_price_usd > 0 ? `$${amazon_price_usd.toFixed(2)}` : "—"}
+        </span>
       </div>
 
-      {statusChip}
-
-      {/* Price */}
-      <span className="text-sm font-bold shrink-0 w-20 text-right" style={{ color: "#50A0FA" }}>
-        {amazon_price_usd > 0 ? `$${amazon_price_usd.toFixed(2)}` : "—"}
-      </span>
+      {/* Blacklist warning */}
+      {hasBlacklist && (
+        <div
+          className="flex items-center gap-2 px-4 py-1.5"
+          style={{ background: "rgba(245,158,11,0.08)", borderTop: "1px solid rgba(245,158,11,0.2)" }}
+        >
+          <span style={{ color: "#f59e0b", fontSize: 13 }}>!</span>
+          <span className="text-[11px]" style={{ color: "#f59e0b" }}>
+            This product contains blacklisted words
+          </span>
+        </div>
+      )}
     </div>
   );
 }
@@ -138,15 +155,15 @@ export default function SearchAmazon() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
-  const [activeQuery, setActiveQuery] = useState("");   // query the current results belong to
-  const [loading, setLoading] = useState(false);        // initial search
-  const [loadingMore, setLoadingMore] = useState(false); // fetching next Amazon page
+  const [activeQuery, setActiveQuery] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [searchError, setSearchError] = useState("");
   const [searched, setSearched] = useState(false);
 
-  const [all, setAll] = useState([]);          // accumulated, deduped results
-  const [uiPage, setUiPage] = useState(1);     // 10-item UI page
-  const [amazonPage, setAmazonPage] = useState(0); // last fetched Amazon page
+  const [all, setAll] = useState([]);
+  const [uiPage, setUiPage] = useState(1);
+  const [amazonPage, setAmazonPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [totalResults, setTotalResults] = useState("");
 
@@ -162,15 +179,17 @@ export default function SearchAmazon() {
 
   useEffect(() => {
     getCategories().then(setCategories).catch(() => {});
-    getBlacklist().then(data => setBlacklistTerms(data.map(t => t.value))).catch(() => {});
+    getBlacklist().then(data => setBlacklistTerms((data.rules || data).map(r => r.value))).catch(() => {});
   }, []);
 
-  const blockedSet = useMemo(() => {
-    const s = new Set();
+  // Map of asin → array of matched blacklist terms (all hits, not just first)
+  const blockedMap = useMemo(() => {
+    const m = new Map();
     for (const p of all) {
-      if (isTitleBlocked(p.title, blacklistTerms)) s.add(p.asin);
+      const terms = getMatchedTerms(p.title, blacklistTerms);
+      if (terms.length > 0) m.set(p.asin, terms);
     }
-    return s;
+    return m;
   }, [all, blacklistTerms]);
 
   async function fetchPage(q, pageNum, existing) {
@@ -209,12 +228,10 @@ export default function SearchAmazon() {
   }
 
   async function goNext() {
-    // Enough buffered results for the next UI page? Just flip the page.
     if (all.length > uiPage * PAGE_SIZE) {
       setUiPage(uiPage + 1);
       return;
     }
-    // Otherwise fetch the next Amazon page (1 credit) and append.
     if (!hasMore || loadingMore) return;
     setLoadingMore(true);
     setSearchError("");
@@ -235,7 +252,6 @@ export default function SearchAmazon() {
   }
 
   function toggleSelect(asin) {
-    if (blockedSet.has(asin)) return;
     setSelected(prev => {
       const next = new Set(prev);
       next.has(asin) ? next.delete(asin) : next.add(asin);
@@ -244,7 +260,7 @@ export default function SearchAmazon() {
   }
 
   const visible = all.slice((uiPage - 1) * PAGE_SIZE, uiPage * PAGE_SIZE);
-  const pageEligible = visible.filter(p => !addedMap[p.asin] && !blockedSet.has(p.asin)).map(p => p.asin);
+  const pageEligible = visible.filter(p => !addedMap[p.asin]).map(p => p.asin);
   const pageAllSelected = pageEligible.length > 0 && pageEligible.every(a => selected.has(a));
   const canGoNext = !loadingMore && (all.length > uiPage * PAGE_SIZE || hasMore);
 
@@ -392,7 +408,6 @@ export default function SearchAmazon() {
                 style={{ background: "rgba(80,160,250,0.04)", border: "1px solid rgba(80,160,250,0.18)" }}>
                 <p className="text-xs font-medium text-[#e8ecf2]">{t("chooseCategory")}</p>
                 <div className="grid grid-cols-2 gap-3">
-                  {/* Main category */}
                   <div>
                     <label className="block text-[11px] text-[#6b7785] uppercase tracking-wider mb-1.5">{t("mainCategoryReq")} <span style={{ color: "#ef4444" }}>*</span></label>
                     <select
@@ -407,7 +422,6 @@ export default function SearchAmazon() {
                       ))}
                     </select>
                   </div>
-                  {/* Subcategory */}
                   <div>
                     <label className="block text-[11px] text-[#6b7785] uppercase tracking-wider mb-1.5">{t("subcategoryLabel")}</label>
                     <select
@@ -459,7 +473,7 @@ export default function SearchAmazon() {
                   selected={selected.has(product.asin)}
                   onToggle={toggleSelect}
                   addedStatus={addedMap[product.asin] || null}
-                  isBlocked={blockedSet.has(product.asin)}
+                  matchedTerms={blockedMap.get(product.asin) || []}
                 />
               ))}
             </div>
