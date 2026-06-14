@@ -5,7 +5,7 @@ function OptionCard({ icon, title, description, badge, onClick, className = "" }
   return (
     <button
       onClick={onClick}
-      className={`group relative w-full text-left rounded-2xl p-7 transition-all duration-300 hover:-translate-y-1 ${className}`}
+      className={`group relative w-full text-left rounded-2xl p-7 transition-all duration-200 ${className}`}
       style={{
         background: "linear-gradient(135deg, rgba(80,160,250,0.05) 0%, rgba(13,17,23,0.8) 100%)",
         border: "1px solid rgba(80,160,250,0.12)",
@@ -19,10 +19,6 @@ function OptionCard({ icon, title, description, badge, onClick, className = "" }
         e.currentTarget.style.boxShadow = "none";
       }}
     >
-      {/* Top accent line */}
-      <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-        style={{ background: "linear-gradient(90deg, transparent, #50A0FA, transparent)" }} />
-
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-5">
           {/* Icon */}
@@ -138,8 +134,6 @@ export default function AddProductHub() {
         />
       </div>
 
-      {/* Footer hint */}
-      <p className="text-[11px] text-[#4a5568] mt-6">{t("moreOptionsSoon")}</p>
     </div>
   );
 }

@@ -1,108 +1,67 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import {
+  LayoutDashboard, Package, FolderOpen, Plus,
+  TrendingUp, ShieldOff, Trash2, RefreshCw, LogOut, Zap,
+} from "lucide-react";
 import LangToggle from "./LangToggle.jsx";
 
-// SVG icon components for sidebar
-function IconDashboard() {
-  return (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v5a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v2a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 13a1 1 0 011-1h4a1 1 0 011 1v6a1 1 0 01-1 1h-4a1 1 0 01-1-1v-6z" />
-    </svg>
-  );
-}
-function IconProducts() {
-  return (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-    </svg>
-  );
-}
-function IconAdd() {
-  return (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-    </svg>
-  );
-}
-function IconImport() {
-  return (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-    </svg>
-  );
-}
-function IconCategory() {
-  return (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
-    </svg>
-  );
-}
-function IconBlacklist() {
-  return (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-    </svg>
-  );
-}
-function IconMargin() {
-  return (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-    </svg>
-  );
-}
-function IconTrash() {
-  return (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-      <polyline points="3 6 5 6 21 6"/>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M10 11v6M14 11v6"/>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-    </svg>
-  );
-}
-function IconSync() {
-  return (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-    </svg>
-  );
-}
-function IconLogout() {
-  return (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-    </svg>
-  );
-}
-
-// One nav row in the sidebar. Active items get the blue gradient pill.
-function NavItem({ to, icon, label }) {
+/* ── Nav item ──────────────────────────────────────────── */
+function NavItem({ to, icon: Icon, label }) {
   return (
     <NavLink
       to={to}
-      className={({ isActive }) =>
-        "flex items-center gap-3 px-3 py-2.5 my-0.5 rounded-lg text-sm font-medium transition-all duration-200 group/nav " +
-        (isActive
-          ? "text-white shadow-lg"
-          : "text-[#6b7785] hover:text-white")
-      }
-      style={({ isActive }) =>
-        isActive
-          ? {
-              background: "linear-gradient(90deg, rgba(80,160,250,0.25) 0%, rgba(80,160,250,0.08) 100%)",
-              borderLeft: "2px solid #50A0FA",
-            }
-          : {
-              borderLeft: "2px solid transparent",
-            }
-      }
+      className="block"
+      style={({ isActive }) => isActive ? {} : {}}
     >
-      <span className="flex-shrink-0">
-        {icon}
-      </span>
-      <span>{label}</span>
+      {({ isActive }) => (
+        <div
+          className="flex items-center gap-3 px-3 py-2.5 my-0.5 rounded-xl text-[13px] font-medium transition-all duration-150 cursor-pointer select-none"
+          style={
+            isActive ? {
+              background: 'linear-gradient(135deg, rgba(59,130,246,0.18) 0%, rgba(99,102,241,0.1) 100%)',
+              color: '#93C5FD',
+              boxShadow: '0 0 0 1px rgba(59,130,246,0.2) inset, 0 4px 12px rgba(59,130,246,0.08)',
+            } : {
+              color: '#475569',
+            }
+          }
+          onMouseEnter={e => {
+            if (!e.currentTarget.closest('a').classList.contains('active')) {
+              e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+              e.currentTarget.style.color = '#94A3B8';
+            }
+          }}
+          onMouseLeave={e => {
+            const link = e.currentTarget.closest('a');
+            const href = link?.getAttribute('href');
+            if (href && !window.location.pathname.startsWith(href)) {
+              e.currentTarget.style.background = '';
+              e.currentTarget.style.color = '#475569';
+            }
+          }}
+        >
+          <span
+            className="flex-shrink-0 flex items-center justify-center w-7 h-7 rounded-lg"
+            style={
+              isActive ? {
+                background: 'rgba(59,130,246,0.2)',
+                color: '#60A5FA',
+              } : {
+                background: 'rgba(255,255,255,0.04)',
+                color: '#475569',
+              }
+            }
+          >
+            <Icon size={15} strokeWidth={isActive ? 2 : 1.75} />
+          </span>
+          <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{label}</span>
+          {isActive && (
+            <span className="ml-auto w-1 h-4 rounded-full flex-shrink-0"
+              style={{ background: 'linear-gradient(180deg, #60A5FA, #818CF8)' }} />
+          )}
+        </div>
+      )}
     </NavLink>
   );
 }
@@ -112,76 +71,119 @@ function Layout() {
   const { t } = useTranslation();
 
   return (
-    <div className="flex h-screen bg-app text-[#e8ecf2]">
-      {/* Sidebar */}
+    <div className="flex h-screen bg-app text-ds-text">
+
+      {/* ── Sidebar ─────────────────────────────────────────── */}
       <aside
-        className="w-60 flex flex-col flex-shrink-0"
+        className="w-[232px] flex flex-col flex-shrink-0 relative"
         style={{
-          background: "linear-gradient(180deg, #0e1420 0%, #0d1117 100%)",
-          borderRight: "1px solid rgba(80,160,250,0.1)",
+          background: 'linear-gradient(180deg, #071628 0%, #060f1e 60%, #050c18 100%)',
+          borderRight: '1px solid rgba(255,255,255,0.05)',
         }}
       >
-        {/* Brand + lang toggle */}
+        {/* Sidebar ambient glow */}
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0, height: '40%',
+          background: 'radial-gradient(ellipse at 50% 0%, rgba(59,130,246,0.08) 0%, transparent 70%)',
+          pointerEvents: 'none',
+        }} />
+
+        {/* Brand */}
         <div
-          className="px-4 py-4 flex items-center justify-between"
-          style={{ borderBottom: "1px solid rgba(80,160,250,0.08)" }}
+          className="relative px-4 h-[60px] flex items-center justify-between flex-shrink-0"
+          style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}
         >
           <div className="flex items-center gap-2.5">
+            {/* Logo */}
             <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm relative"
+              className="relative w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
               style={{
-                background: "linear-gradient(135deg, #50A0FA 0%, #3d7fd1 100%)",
-                color: "#0d1117",
+                background: 'linear-gradient(135deg, #3B82F6 0%, #6366F1 100%)',
+                boxShadow: '0 0 20px rgba(59,130,246,0.4), 0 0 40px rgba(99,102,241,0.15)',
               }}
             >
-              M
-              {/* Inner glow dot */}
-              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-green-400 border-2 border-[#0e1420] animate-pulse" />
+              <Zap size={15} strokeWidth={2.5} className="text-white" style={{ filter: 'drop-shadow(0 0 4px rgba(255,255,255,0.5))' }} />
+              <span
+                className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full pulse-dot"
+                style={{ background: '#22C55E', border: '2px solid #040a18' }}
+              />
             </div>
             <div>
-              <div className="font-semibold text-sm text-white leading-tight">Meli Sync</div>
+              <span
+                className="font-bold text-[15px] tracking-tight"
+                style={{
+                  fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  background: 'linear-gradient(135deg, #F8FAFC 0%, #93C5FD 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                }}
+              >
+                MeliSync
+              </span>
             </div>
           </div>
           <LangToggle />
         </div>
 
-        {/* Nav section label */}
-        <div className="px-4 pt-4 pb-1">
-          <span className="text-[9px] font-bold uppercase tracking-widest text-[#4a5568]">{t("nav_section")}</span>
-        </div>
-
         {/* Nav */}
-        <nav className="flex-1 px-2 pb-3 overflow-y-auto">
-          <NavItem to="/dashboard"     icon={<IconDashboard />}  label={t("dashboard")} />
-          <NavItem to="/products"      icon={<IconProducts />}   label={t("products")} />
-          <NavItem to="/categories"    icon={<IconCategory />}   label={t("nav_categories")} />
-          <NavItem to="/add"           icon={<IconAdd />}        label={t("nav_addProducts")} />
-          <NavItem to="/margin-config" icon={<IconMargin />}     label={t("nav_marginConfig")} />
-          <NavItem to="/blacklist"     icon={<IconBlacklist />}  label={t("blacklist")} />
-          <NavItem to="/recycle-bin"   icon={<IconTrash />}      label={t("nav_recycleBin")} />
-          <NavItem to="/sync"          icon={<IconSync />}       label={t("nav_sync")} />
+        <nav className="relative flex-1 px-2.5 pt-4 pb-3 overflow-y-auto">
+
+          <div className="mb-1.5 px-3">
+            <span className="text-[10px] font-bold uppercase tracking-[0.12em]" style={{ color: '#2D3D55', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+              Overview
+            </span>
+          </div>
+          <NavItem to="/dashboard"     icon={LayoutDashboard} label={t("dashboard")} />
+          <NavItem to="/products"      icon={Package}         label={t("products")} />
+
+          <div className="mt-4 mb-1.5 px-3">
+            <span className="text-[10px] font-bold uppercase tracking-[0.12em]" style={{ color: '#2D3D55', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+              Catalog
+            </span>
+          </div>
+          <NavItem to="/categories"    icon={FolderOpen}      label={t("nav_categories")} />
+          <NavItem to="/add"           icon={Plus}            label={t("nav_addProducts")} />
+          <NavItem to="/margin-config" icon={TrendingUp}      label={t("nav_marginConfig")} />
+          <NavItem to="/blacklist"     icon={ShieldOff}       label={t("blacklist")} />
+          <NavItem to="/recycle-bin"   icon={Trash2}          label={t("nav_recycleBin")} />
+
+          <div className="mt-4 mb-1.5 px-3">
+            <span className="text-[10px] font-bold uppercase tracking-[0.12em]" style={{ color: '#2D3D55', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+              Automation
+            </span>
+          </div>
+          <NavItem to="/sync" icon={RefreshCw} label={t("nav_sync")} />
         </nav>
 
         {/* Logout */}
-        <div
-          className="p-3"
-          style={{ borderTop: "1px solid rgba(80,160,250,0.08)" }}
-        >
+        <div className="px-2.5 pb-4" style={{ borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: 12 }}>
           <button
             onClick={() => navigate("/login")}
-            className="w-full px-3 py-2.5 rounded-lg text-sm text-[#6b7785] hover:text-red-400 hover:bg-red-400/5 transition-all duration-200 text-left flex items-center gap-3 group/logout"
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-150 cursor-pointer"
+            style={{ color: '#2D3D55', fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = 'rgba(239,68,68,0.08)';
+              e.currentTarget.style.color = '#FCA5A5';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = '';
+              e.currentTarget.style.color = '#2D3D55';
+            }}
           >
-            <span className="transition-transform duration-200 group-hover/logout:translate-x-0.5">
-              <IconLogout />
+            <span className="flex items-center justify-center w-7 h-7 rounded-lg flex-shrink-0"
+              style={{ background: 'rgba(239,68,68,0.08)' }}>
+              <LogOut size={14} strokeWidth={1.75} />
             </span>
-            <span>{t("logout")}</span>
+            {t("logout")}
           </button>
         </div>
       </aside>
 
-      {/* Main content area */}
+      {/* ── Main content ─────────────────────────────────────── */}
       <main className="flex-1 overflow-auto relative">
-        <div className="relative p-8 max-w-7xl">
+        <div className="live-bar" aria-hidden="true" />
+        <div className="relative p-8 max-w-[1400px]">
           <Outlet />
         </div>
       </main>
