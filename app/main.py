@@ -1,4 +1,4 @@
-cat > app/main.py << 'EOF'
+
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -104,4 +104,3 @@ def list_routes():
         {"path": r.path, "methods": list(r.methods) if hasattr(r, "methods") else []}
         for r in app.routes
     ]
-EOF
