@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { getBlacklist, addBlacklistTerm, deleteBlacklistTerm } from "../api.js";
+import { getBlacklist, addBlacklistTerm, deleteBlacklistTerm, rescanBlacklist } from "../api.js";
 
 const PAGE_SIZE = 50;
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
@@ -20,6 +20,8 @@ function Blacklist() {
   const [selected, setSelected]         = useState(new Set());
   const [confirmBulk, setConfirmBulk]   = useState(false);
   const [sortBy, setSortBy]             = useState("latest");
+  const [scanning, setScanning]         = useState(false);
+  const [scanResult, setScanResult]     = useState(null);
 
   const headerCheckRef = useRef(null);
 
@@ -37,6 +39,19 @@ function Blacklist() {
   }
 
   useEffect(() => { reload(); }, []);
+
+  async function handleRescan() {
+    setScanning(true);
+    setScanResult(null);
+    try {
+      const stats = await rescanBlacklist();
+      setScanResult(stats);
+    } catch {
+      setScanResult({ error: true });
+    } finally {
+      setScanning(false);
+    }
+  }
 
   async function add() {
     const lines = newTerm.split("\n").map((l) => l.trim()).filter(Boolean);
@@ -206,15 +221,51 @@ function Blacklist() {
           <h1 className="text-2xl font-medium text-white mb-1">{t("blacklistTitle")}</h1>
           <p className="text-sm text-[#6b7785]">{t("blacklistSubtitle")}</p>
         </div>
-        <div
-          className="px-3 py-1.5 rounded-lg text-sm"
-          style={{
-            background: "rgba(80,160,250,0.08)",
-            border: "1px solid rgba(80,160,250,0.2)",
-            color: "#50A0FA",
-          }}
-        >
-          {terms.length.toLocaleString()} {t("termsCount")}
+        <div className="flex items-center gap-2 flex-wrap">
+          {scanResult && !scanResult.error && (
+            <div className="px-3 py-1.5 rounded-lg text-sm flex items-center gap-2"
+              style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", color: "#ef4444" }}>
+              <span>⊘ {scanResult.blocked} blocked</span>
+              {scanResult.unblocked > 0 && (
+                <span style={{ color: "#22c55e" }}>· ✓ {scanResult.unblocked} unblocked</span>
+              )}
+            </div>
+          )}
+          {scanResult?.error && (
+            <div className="px-3 py-1.5 rounded-lg text-sm"
+              style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", color: "#ef4444" }}>
+              Scan failed
+            </div>
+          )}
+          <button
+            onClick={handleRescan}
+            disabled={scanning}
+            className="px-4 py-1.5 rounded-lg text-sm font-medium transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)", color: "#ef4444" }}
+          >
+            {scanning ? (
+              <>
+                <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                </svg>
+                Scanning…
+              </>
+            ) : (
+              <>
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                </svg>
+                Scan All Products
+              </>
+            )}
+          </button>
+          <div
+            className="px-3 py-1.5 rounded-lg text-sm"
+            style={{ background: "rgba(80,160,250,0.08)", border: "1px solid rgba(80,160,250,0.2)", color: "#50A0FA" }}
+          >
+            {terms.length.toLocaleString()} {t("termsCount")}
+          </div>
         </div>
       </div>
 

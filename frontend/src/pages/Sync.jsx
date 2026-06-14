@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { getSyncHistory, triggerAmazonSync, triggerMeliSync, getSyncSettings, saveSyncSettings } from "../api";
 
 const UNITS = ["seconds", "minutes", "hours", "days", "weeks"];
@@ -46,6 +47,7 @@ function SyncTypeBadge({ type }) {
 }
 
 function SyncCard({ title, description, schedule, onRun, running, result }) {
+  const { t } = useTranslation();
   return (
     <div
       className="rounded-xl p-5 flex flex-col gap-3"
@@ -58,7 +60,7 @@ function SyncCard({ title, description, schedule, onRun, running, result }) {
         <div>
           <h3 className="font-semibold text-white text-sm">{title}</h3>
           <p className="text-xs text-[#6b7785] mt-0.5">{description}</p>
-          <p className="text-xs text-[#4a5568] mt-1">Next run: {schedule}</p>
+          <p className="text-xs text-[#4a5568] mt-1">{t("nextRun")}: {schedule}</p>
         </div>
         <button
           onClick={onRun}
@@ -72,7 +74,7 @@ function SyncCard({ title, description, schedule, onRun, running, result }) {
             cursor: running ? "not-allowed" : "pointer",
           }}
         >
-          {running ? "Running…" : "Run Now"}
+          {running ? t("running") : t("runNow")}
         </button>
       </div>
 
@@ -86,8 +88,8 @@ function SyncCard({ title, description, schedule, onRun, running, result }) {
           }}
         >
           {result.error
-            ? `Error: ${result.error}`
-            : `Updated: ${result.updated ?? 0}  Failed: ${result.failed ?? 0}${result.skipped != null ? `  Unchanged: ${result.skipped}` : ""}`}
+            ? t("syncResultError", { error: result.error })
+            : t("syncResultOk", { updated: result.updated ?? 0, failed: result.failed ?? 0 }) + (result.skipped != null ? t("syncResultUnchanged", { n: result.skipped }) : "")}
         </div>
       )}
     </div>
@@ -95,6 +97,7 @@ function SyncCard({ title, description, schedule, onRun, running, result }) {
 }
 
 function IntervalRow({ label, usesCredits, productCount, value, unit, onChange, onSave, saving, saved, error }) {
+  const { t } = useTranslation();
   const secs = toSeconds(value, unit);
   const showCreditWarning = usesCredits && (unit === "seconds" || unit === "minutes");
   const tooShort = secs < 60;
@@ -110,7 +113,7 @@ function IntervalRow({ label, usesCredits, productCount, value, unit, onChange, 
       <h3 className="text-sm font-semibold text-white">{label}</h3>
 
       <div className="flex items-center gap-2">
-        <span className="text-xs text-[#6b7785] w-20 flex-shrink-0">Run every</span>
+        <span className="text-xs text-[#6b7785] w-20 flex-shrink-0">{t("runEvery")}</span>
 
         {/* Number input */}
         <input
@@ -140,7 +143,7 @@ function IntervalRow({ label, usesCredits, productCount, value, unit, onChange, 
         >
           {UNITS.map((u) => (
             <option key={u} value={u} style={{ background: "#161d2e" }}>
-              {u}
+              {t(`unit_${u}`)}
             </option>
           ))}
         </select>
@@ -160,14 +163,14 @@ function IntervalRow({ label, usesCredits, productCount, value, unit, onChange, 
             cursor: saving || tooShort ? "not-allowed" : "pointer",
           }}
         >
-          {saving ? "Saving…" : saved ? "Saved!" : "Save"}
+          {saving ? t("savingLabel") : saved ? t("saved") : t("saveBtn")}
         </button>
       </div>
 
       {/* Validation error */}
       {tooShort && (
         <p className="text-xs text-red-400">
-          Minimum interval is 60 seconds. Current value: {secs}s.
+          {t("minIntervalError", { n: secs })}
         </p>
       )}
 
@@ -182,16 +185,12 @@ function IntervalRow({ label, usesCredits, productCount, value, unit, onChange, 
         >
           <span className="text-amber-400 mt-0.5">⚠</span>
           <p className="text-xs text-amber-300 leading-relaxed">
-            You have <strong>{productCount}</strong> products, so{" "}
-            <strong>{productCount} scrape.do credits</strong> will be used every{" "}
-            <strong>
-              {value} {unit}
-            </strong>
-            . That is{" "}
-            <strong>
-              {(productCount * Math.floor(86400 / secs)).toLocaleString()} credits/day
-            </strong>
-            . Make sure your plan supports this.
+            {t("creditWarning", {
+              count: productCount,
+              value,
+              unit: t(`unit_${unit}`),
+              daily: (productCount * Math.floor(86400 / secs)).toLocaleString(),
+            })}
           </p>
         </div>
       )}
@@ -205,6 +204,7 @@ function IntervalRow({ label, usesCredits, productCount, value, unit, onChange, 
 }
 
 export default function Sync() {
+  const { t } = useTranslation();
   const [history, setHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
 
@@ -247,7 +247,7 @@ export default function Sync() {
   }, [loadHistory]);
 
   function scheduleLabel(interval) {
-    return `Every ${interval.value} ${interval.unit}`;
+    return t("everyInterval", { value: interval.value, unit: t(`unit_${interval.unit}`) });
   }
 
   async function handleAmazonSync() {
@@ -322,25 +322,25 @@ export default function Sync() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-white">Sync</h1>
+        <h1 className="text-2xl font-bold text-white">{t("syncTitle")}</h1>
         <p className="text-sm text-[#6b7785] mt-1">
-          Automatic sync keeps your Amazon data and Mercado Libre listings up to date.
+          {t("syncSubtitle")}
         </p>
       </div>
 
       {/* Run Now cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <SyncCard
-          title="Amazon Price & Rating Sync"
-          description="Re-fetches price, rating, review count, and Prime status from Amazon for every product."
+          title={t("amazonSyncCardTitle")}
+          description={t("amazonSyncCardDesc")}
           schedule={scheduleLabel(amazonInterval)}
           onRun={handleAmazonSync}
           running={amazonRunning}
           result={amazonResult}
         />
         <SyncCard
-          title="Mercado Libre Price Sync"
-          description="Recalculates COP prices with the latest exchange rate and pushes updates to published listings."
+          title={t("meliSyncCardTitle")}
+          description={t("meliSyncCardDesc")}
           schedule={scheduleLabel(meliInterval)}
           onRun={handleMeliSync}
           running={meliRunning}
@@ -350,10 +350,10 @@ export default function Sync() {
 
       {/* Schedule configuration */}
       <div>
-        <h2 className="text-sm font-semibold text-white mb-3">Schedule Configuration</h2>
+        <h2 className="text-sm font-semibold text-white mb-3">{t("scheduleConfig")}</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <IntervalRow
-            label="Amazon Sync Interval"
+            label={t("amazonSyncInterval")}
             usesCredits={true}
             productCount={productCount}
             value={amazonInterval.value}
@@ -365,7 +365,7 @@ export default function Sync() {
             error={amazonSaveError}
           />
           <IntervalRow
-            label="Mercado Libre Sync Interval"
+            label={t("meliSyncInterval")}
             usesCredits={false}
             productCount={productCount}
             value={meliInterval.value}
@@ -381,7 +381,7 @@ export default function Sync() {
 
       {/* History table */}
       <div>
-        <h2 className="text-sm font-semibold text-white mb-3">Sync History</h2>
+        <h2 className="text-sm font-semibold text-white mb-3">{t("syncHistory")}</h2>
         <div
           className="rounded-xl overflow-hidden"
           style={{ border: "1px solid rgba(80,160,250,0.1)" }}
@@ -389,23 +389,23 @@ export default function Sync() {
           <table className="w-full text-xs">
             <thead>
               <tr style={{ background: "rgba(80,160,250,0.06)", borderBottom: "1px solid rgba(80,160,250,0.1)" }}>
-                <th className="text-left px-4 py-2.5 text-[#6b7785] font-medium">Type</th>
-                <th className="text-left px-4 py-2.5 text-[#6b7785] font-medium">Started</th>
-                <th className="text-left px-4 py-2.5 text-[#6b7785] font-medium">Duration</th>
-                <th className="text-right px-4 py-2.5 text-[#6b7785] font-medium">Updated</th>
-                <th className="text-right px-4 py-2.5 text-[#6b7785] font-medium">Failed</th>
-                <th className="text-left px-4 py-2.5 text-[#6b7785] font-medium">Notes</th>
+                <th className="text-left px-4 py-2.5 text-[#6b7785] font-medium">{t("typeCol")}</th>
+                <th className="text-left px-4 py-2.5 text-[#6b7785] font-medium">{t("startedCol")}</th>
+                <th className="text-left px-4 py-2.5 text-[#6b7785] font-medium">{t("durationCol")}</th>
+                <th className="text-right px-4 py-2.5 text-[#6b7785] font-medium">{t("updatedCol")}</th>
+                <th className="text-right px-4 py-2.5 text-[#6b7785] font-medium">{t("failedCol")}</th>
+                <th className="text-left px-4 py-2.5 text-[#6b7785] font-medium">{t("notesCol")}</th>
               </tr>
             </thead>
             <tbody>
               {loadingHistory ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-8 text-[#4a5568]">Loading…</td>
+                  <td colSpan={6} className="text-center py-8 text-[#4a5568]">{t("loadingLabel")}</td>
                 </tr>
               ) : history.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="text-center py-8 text-[#4a5568]">
-                    No sync runs yet. Click "Run Now" to trigger a sync.
+                    {t("noSyncYet")}
                   </td>
                 </tr>
               ) : (

@@ -10,7 +10,7 @@ from app.services.blacklist import BlacklistFilter, normalize_text
 from app.services.pricing import price_product_for_meli
 
 # Set to False to disable all blacklist checks (e.g. during testing).
-BLACKLIST_ENABLED = False
+BLACKLIST_ENABLED = True
 
 
 def _calc_cop(usd: float, session: Session) -> float:
@@ -34,6 +34,9 @@ class ProductInput(BaseModel):
     stock: int = 0
     is_prime: bool = True
     category_id: Optional[int] = None
+    brand: Optional[str] = None
+    rating: float = 0.0
+    total_ratings: int = 0
 
 
 class BlacklistInput(BaseModel):
@@ -135,6 +138,8 @@ def _add_one(data: ProductInput, session: Session, blacklist: BlacklistFilter) -
         converted_price_cop=cop,
         stock=data.stock, initial_stock=data.stock, is_prime=data.is_prime,
         category_id=data.category_id,
+        amazon_category=data.brand or None,
+        rating=data.rating, total_ratings=data.total_ratings,
         status="pending",
     ))
     session.add(AuditLog(action="manual_entry", asin=asin, detail=f"Manually added: {title[:50]}"))

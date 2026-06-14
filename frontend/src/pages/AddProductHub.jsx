@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 function OptionCard({ icon, title, description, badge, onClick }) {
   return (
@@ -59,13 +60,14 @@ function OptionCard({ icon, title, description, badge, onClick }) {
 
 export default function AddProductHub() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   return (
     <div className="max-w-2xl">
       {/* Header */}
       <div className="mb-8 fade-up">
-        <h1 className="text-2xl font-medium text-white mb-1">Add Products</h1>
-        <p className="text-sm text-[#6b7785]">Choose how you want to add a product to your catalog.</p>
+        <h1 className="text-2xl font-medium text-white mb-1">{t("addProductsTitle")}</h1>
+        <p className="text-sm text-[#6b7785]">{t("addProductsSubtitle")}</p>
       </div>
 
       {/* Option cards */}
@@ -78,8 +80,8 @@ export default function AddProductHub() {
               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
             </svg>
           }
-          title="Add Manually"
-          description="Fill in the product title, price, description, images, and stock yourself. Best for custom or local products not on Amazon."
+          title={t("addManuallyTitle")}
+          description={t("addManuallyDesc")}
         />
 
         <OptionCard
@@ -90,9 +92,9 @@ export default function AddProductHub() {
               <line x1="7" y1="7" x2="7.01" y2="7"/>
             </svg>
           }
-          title="Import from Amazon"
-          badge="ASIN only"
-          description="Paste one or more Amazon ASINs to automatically pull the title, images, price, and description from Amazon."
+          title={t("importFromAmazon")}
+          badge={t("asinOnlyBadge")}
+          description={t("importAsinDesc")}
         />
 
         <OptionCard
@@ -103,16 +105,40 @@ export default function AddProductHub() {
               <path d="m21 21-4.35-4.35"/>
             </svg>
           }
-          title="Import from Amazon"
-          badge="Names only"
-          description="Type a product name like &quot;5kg dumbbell&quot; and browse Amazon results. Pick the ones you want and add them in one click."
+          title={t("importFromAmazon")}
+          badge={t("namesOnlyBadge")}
+          description={t("importSearchDesc")}
+        />
+
+        <OptionCard
+          onClick={() => navigate("/add/category")}
+          icon={
+            <svg width="22" height="22" fill="none" stroke="#50A0FA" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
+              <line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/>
+            </svg>
+          }
+          title={t("importFromAmazon")}
+          badge={t("byCategoryBadge")}
+          description={t("importCatDesc")}
+        />
+
+        <OptionCard
+          onClick={() => navigate("/add/url")}
+          icon={
+            <svg width="22" height="22" fill="none" stroke="#50A0FA" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+            </svg>
+          }
+          title={t("importFromAmazon")}
+          badge={t("byUrlBadge")}
+          description={t("importUrlDesc")}
         />
       </div>
 
       {/* Footer hint */}
-      <p className="text-[11px] text-[#4a5568] mt-6">
-        More import options coming soon — bulk CSV upload, MercadoLibre search, and more.
-      </p>
+      <p className="text-[11px] text-[#4a5568] mt-6">{t("moreOptionsSoon")}</p>
     </div>
   );
 }

@@ -3,22 +3,33 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import api, { getCategories } from "../api.js";
 
-const MAX_ASINS = 50;
-const ASIN_RE = /^[A-Z0-9]{10}$/i;
+const MAX_URLS = 50;
+const ASIN_RE = /\/(?:dp|gp\/product|product)\/([A-Z0-9]{10})/i;
 
-function parseAsinInput(raw) {
-  const tokens = raw.split(/[\n,\s]+/).map(s => s.trim()).filter(Boolean);
+function parseUrlInput(raw) {
+  const lines = raw.split(/\n|,/).map(s => s.trim()).filter(Boolean);
   const valid = [], invalid = [];
-  for (const token of tokens) {
-    if (token.includes("/") || token.toLowerCase().startsWith("http")) {
-      invalid.push({ value: token.slice(0, 40), reason: "Links not allowed — use ASIN only" });
-    } else if (!ASIN_RE.test(token)) {
-      invalid.push({ value: token.slice(0, 40), reason: `Must be 10 alphanumeric characters (got ${token.length})` });
-    } else if (!valid.includes(token.toUpperCase())) {
-      valid.push(token.toUpperCase());
+  const seen = new Set();
+
+  for (const line of lines) {
+    const lc = line.toLowerCase();
+    if (!lc.includes("amazon.") && !lc.startsWith("http")) {
+      invalid.push({ value: line.slice(0, 60), reason: "Not a URL — paste a full Amazon product link" });
+      continue;
     }
+    const m = ASIN_RE.exec(line);
+    if (!m) {
+      invalid.push({ value: line.slice(0, 60), reason: "No product ASIN found — make sure the URL contains /dp/" });
+      continue;
+    }
+    const asin = m[1].toUpperCase();
+    if (seen.has(asin)) continue;
+    seen.add(asin);
+    valid.push({ url: line, asin });
   }
-  return { valid: valid.slice(0, MAX_ASINS), capped: valid.length > MAX_ASINS, invalid };
+
+  const capped = valid.length > MAX_URLS;
+  return { valid: valid.slice(0, MAX_URLS), capped, invalid };
 }
 
 const selStyle = {
@@ -29,10 +40,10 @@ const selStyle = {
   appearance: "none",
 };
 
-export default function ImportAsins() {
+export default function ImportUrls() {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const [asinText, setAsinText] = useState("");
+  const [urlText, setUrlText] = useState("");
   const [importing, setImporting] = useState(false);
   const [results, setResults] = useState(null);
   const [error, setError] = useState("");
@@ -41,7 +52,7 @@ export default function ImportAsins() {
   const [mainId, setMainId] = useState("");
   const [subId, setSubId] = useState("");
 
-  const parsed = parseAsinInput(asinText);
+  const parsed = parseUrlInput(urlText);
 
   useEffect(() => {
     api.get("/amazon/status")
@@ -57,8 +68,8 @@ export default function ImportAsins() {
     setResults(null);
     try {
       const categoryId = subId ? parseInt(subId) : mainId ? parseInt(mainId) : undefined;
-      const r = await api.post("/amazon/import-asins", {
-        asins: parsed.valid,
+      const r = await api.post("/amazon/import-urls", {
+        urls: parsed.valid.map(v => v.url),
         ...(categoryId ? { category_id: categoryId } : {}),
       });
       setResults(r.data);
@@ -80,10 +91,10 @@ export default function ImportAsins() {
         <div className="flex items-center gap-1.5 text-[11px] text-[#4a5568] mb-3">
           <button onClick={() => navigate("/add")} className="hover:text-[#50A0FA] transition-colors">{t("addProductsBreadcrumb")}</button>
           <span>/</span>
-          <span className="text-[#6b7785]">{t("byAsin")}</span>
+          <span className="text-[#6b7785]">{t("byUrl")}</span>
         </div>
-        <h1 className="text-2xl font-medium text-white mb-1">{t("importByAsinTitle")}</h1>
-        <p className="text-sm text-[#6b7785]">{t("importByAsinSubtitle")}</p>
+        <h1 className="text-2xl font-medium text-white mb-1">{t("importByUrlTitle")}</h1>
+        <p className="text-sm text-[#6b7785]">{t("importByUrlSubtitle")}</p>
       </div>
 
       {apiStatus && (
@@ -100,33 +111,49 @@ export default function ImportAsins() {
 
       <div className="card rounded-xl p-5 mb-4" style={{ animation: "fadeUp 0.5s ease-out 0.1s backwards" }}>
         <div className="flex items-center justify-between mb-2">
-          <label className="block text-[11px] text-[#6b7785] uppercase tracking-wider">{t("amazonAsins")}</label>
+          <label className="block text-[11px] text-[#6b7785] uppercase tracking-wider">{t("amazonUrls")}</label>
           <span className="text-[11px]" style={{ color: parsed.valid.length > 0 ? "#50A0FA" : "#4a5568" }}>
-            {asinText.trim() ? t("validCount", { count: parsed.valid.length, max: MAX_ASINS }) : t("maxPerBatch", { max: MAX_ASINS })}
+            {urlText.trim() ? t("validCount", { count: parsed.valid.length, max: MAX_URLS }) : t("maxPerBatch", { max: MAX_URLS })}
           </span>
         </div>
 
         <textarea
-          value={asinText}
-          onChange={e => { setAsinText(e.target.value); setError(""); setResults(null); }}
-          rows={6}
-          placeholder={"B08T8L371P\nB0DHRQXYCH\nB09G9HD3R9"}
-          className="w-full rounded-lg px-3 py-2.5 text-sm text-[#e8ecf2] font-mono resize-y"
+          value={urlText}
+          onChange={e => { setUrlText(e.target.value); setError(""); setResults(null); }}
+          rows={7}
+          placeholder={"https://www.amazon.com/dp/B08T8L371P\nhttps://www.amazon.com/dp/B0DHRQXYCH\nhttps://www.amazon.com/dp/B09G9HD3R9"}
+          className="w-full rounded-lg px-3 py-2.5 text-sm text-[#e8ecf2] resize-y"
           style={{
             background: "rgba(255,255,255,0.04)",
-            border: `1px solid ${parsed.invalid.length > 0 && asinText.trim() ? "rgba(239,68,68,0.4)" : "rgba(80,160,250,0.18)"}`,
+            border: `1px solid ${parsed.invalid.length > 0 && urlText.trim() ? "rgba(239,68,68,0.4)" : "rgba(80,160,250,0.18)"}`,
           }}
         />
-        <p className="text-[11px] text-[#4a5568] mt-1.5">{t("asinHint")}</p>
+        <p className="text-[11px] text-[#4a5568] mt-1.5">{t("urlHint")}</p>
+
+        {parsed.valid.length > 0 && (
+          <div className="mt-3 rounded-lg overflow-hidden" style={{ border: "1px solid rgba(80,160,250,0.15)" }}>
+            <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider"
+              style={{ background: "rgba(80,160,250,0.08)", color: "#50A0FA" }}>
+              {t("nProductsDetected", { n: parsed.valid.length, s: parsed.valid.length !== 1 ? "s" : "" })}
+            </div>
+            {parsed.valid.map((item, i) => (
+              <div key={i} className="px-3 py-1.5 flex items-center gap-3 text-xs"
+                style={{ borderTop: "1px solid rgba(80,160,250,0.08)" }}>
+                <code className="font-mono text-[#50A0FA] shrink-0">{item.asin}</code>
+                <span className="text-[#4a5568] truncate">{item.url}</span>
+              </div>
+            ))}
+          </div>
+        )}
 
         {parsed.capped && (
           <div className="mt-2 px-3 py-2 rounded-lg text-xs flex items-center gap-2"
             style={{ background: "rgba(245,158,11,0.1)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.2)" }}>
-            ⚠ {t("asinCapped", { max: MAX_ASINS })}
+            ⚠ {t("asinCapped", { max: MAX_URLS })}
           </div>
         )}
 
-        {parsed.invalid.length > 0 && asinText.trim() && (
+        {parsed.invalid.length > 0 && urlText.trim() && (
           <div className="mt-3 rounded-lg overflow-hidden" style={{ border: "1px solid rgba(239,68,68,0.2)" }}>
             <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider"
               style={{ background: "rgba(239,68,68,0.08)", color: "#ef4444" }}>
@@ -135,8 +162,8 @@ export default function ImportAsins() {
             {parsed.invalid.map((inv, i) => (
               <div key={i} className="px-3 py-1.5 flex items-center gap-3 text-xs"
                 style={{ borderTop: "1px solid rgba(239,68,68,0.1)" }}>
-                <code className="font-mono text-[#ef4444]">{inv.value}</code>
-                <span className="text-[#6b7785]">{inv.reason}</span>
+                <code className="font-mono text-[#ef4444] truncate max-w-xs">{inv.value}</code>
+                <span className="text-[#6b7785] shrink-0">{inv.reason}</span>
               </div>
             ))}
           </div>
@@ -174,9 +201,9 @@ export default function ImportAsins() {
             }}
           >
             {importing
-              ? `${t("importing")} ${parsed.valid.length} ASIN${parsed.valid.length !== 1 ? "s" : ""}...`
+              ? `${t("importing")} ${parsed.valid.length}...`
               : parsed.valid.length > 0
-                ? `${t("importNow")} ${parsed.valid.length} ASIN${parsed.valid.length !== 1 ? "s" : ""} →`
+                ? `${t("importNow")} ${parsed.valid.length} →`
                 : t("importBtnDefault")}
           </button>
           {error && (

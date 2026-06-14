@@ -12,6 +12,8 @@ import ImportAsins from "./pages/ImportAsins.jsx";
 import RecycleBin from "./pages/RecycleBin.jsx";
 import MarginConfig from "./pages/MarginConfig.jsx";
 import Categories from "./pages/Categories.jsx";
+import CategoryImport from "./pages/CategoryImport.jsx";
+import ImportUrls from "./pages/ImportUrls.jsx";
 import Sync from "./pages/Sync.jsx";
 
 function App() {
@@ -30,6 +32,8 @@ function App() {
         <Route path="add/manual" element={<AddProduct />} />
         <Route path="add/asin" element={<ImportAsins />} />
         <Route path="add/search" element={<SearchAmazon />} />
+        <Route path="add/category" element={<CategoryImport />} />
+        <Route path="add/url" element={<ImportUrls />} />
         <Route path="import" element={<ImportAsins />} />
         <Route path="blacklist" element={<Blacklist />} />
         <Route path="recycle-bin" element={<RecycleBin />} />

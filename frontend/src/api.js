@@ -175,5 +175,10 @@ export async function recalculatePrices() {
   return res.data;
 }
 
+export async function rescanBlacklist() {
+  const res = await api.post("/admin/rescan-blacklist");
+  return res.data;
+}
+
 
 export default api;

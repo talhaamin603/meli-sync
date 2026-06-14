@@ -1,6 +1,20 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { searchAmazon, addFromSearch } from "../api.js";
+import { useTranslation } from "react-i18next";
+import { searchAmazon, addFromSearch, getCategories, getBlacklist } from "../api.js";
+
+function wordBoundaryPattern(term) {
+  const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return `(?<![a-zA-Z0-9])${escaped}(?![a-zA-Z0-9])`;
+}
+
+function isTitleBlocked(title, terms) {
+  const lc = (title || "").toLowerCase();
+  return terms.some(term => {
+    try { return new RegExp(wordBoundaryPattern(term.toLowerCase()), "i").test(lc); }
+    catch { return false; }
+  });
+}
 
 const PAGE_SIZE = 16;
 
@@ -27,18 +41,19 @@ function Stars({ rating }) {
 }
 
 // ── Single result row ─────────────────────────────────────────────────────────
-function ResultRow({ product, selected, onToggle, addedStatus }) {
+function ResultRow({ product, selected, onToggle, addedStatus, isBlocked }) {
   const { asin, title, image_url, amazon_price_usd, rating, review_count, is_prime, is_sponsored, badge } = product;
-  const clickable = !addedStatus;
+  const clickable = !addedStatus && !isBlocked;
 
-  const statusChip = addedStatus && (
+  const chipStatus = isBlocked && !addedStatus ? "blocked" : addedStatus;
+  const statusChip = chipStatus && (
     <span className="px-2 py-0.5 rounded-md text-[10px] font-bold shrink-0"
       style={{
-        background: addedStatus === "added" ? "rgba(34,197,94,0.15)" : addedStatus === "failed" || addedStatus === "blocked" ? "rgba(239,68,68,0.15)" : "rgba(107,119,133,0.15)",
-        color: addedStatus === "added" ? "#22c55e" : addedStatus === "failed" || addedStatus === "blocked" ? "#ef4444" : "#a0adbb",
-        border: `1px solid ${addedStatus === "added" ? "rgba(34,197,94,0.3)" : addedStatus === "failed" || addedStatus === "blocked" ? "rgba(239,68,68,0.3)" : "rgba(107,119,133,0.3)"}`,
+        background: chipStatus === "added" ? "rgba(34,197,94,0.15)" : chipStatus === "failed" || chipStatus === "blocked" ? "rgba(239,68,68,0.15)" : "rgba(107,119,133,0.15)",
+        color: chipStatus === "added" ? "#22c55e" : chipStatus === "failed" || chipStatus === "blocked" ? "#ef4444" : "#a0adbb",
+        border: `1px solid ${chipStatus === "added" ? "rgba(34,197,94,0.3)" : chipStatus === "failed" || chipStatus === "blocked" ? "rgba(239,68,68,0.3)" : "rgba(107,119,133,0.3)"}`,
       }}>
-      {addedStatus === "added" ? "Added" : addedStatus === "blocked" ? "Blocked" : addedStatus === "skipped" ? "Already added" : "Failed"}
+      {chipStatus === "added" ? "Added" : chipStatus === "blocked" ? "Blocked" : chipStatus === "skipped" ? "Already added" : "Failed"}
     </span>
   );
 
@@ -52,7 +67,7 @@ function ResultRow({ product, selected, onToggle, addedStatus }) {
           : "rgba(255,255,255,0.03)",
         border: selected ? "1px solid rgba(80,160,250,0.5)" : "1px solid rgba(80,160,250,0.1)",
         cursor: clickable ? "pointer" : "default",
-        opacity: addedStatus ? 0.65 : 1,
+        opacity: (addedStatus || isBlocked) ? 0.65 : 1,
       }}
     >
       {/* Checkbox */}
@@ -121,6 +136,7 @@ function ResultRow({ product, selected, onToggle, addedStatus }) {
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function SearchAmazon() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [activeQuery, setActiveQuery] = useState("");   // query the current results belong to
   const [loading, setLoading] = useState(false);        // initial search
@@ -138,6 +154,24 @@ export default function SearchAmazon() {
   const [adding, setAdding] = useState(false);
   const [addSummary, setAddSummary] = useState(null);
   const [addedMap, setAddedMap] = useState({});
+
+  const [categories, setCategories] = useState([]);
+  const [mainCatId, setMainCatId] = useState("");
+  const [subCatId, setSubCatId] = useState("");
+  const [blacklistTerms, setBlacklistTerms] = useState([]);
+
+  useEffect(() => {
+    getCategories().then(setCategories).catch(() => {});
+    getBlacklist().then(data => setBlacklistTerms(data.map(t => t.value))).catch(() => {});
+  }, []);
+
+  const blockedSet = useMemo(() => {
+    const s = new Set();
+    for (const p of all) {
+      if (isTitleBlocked(p.title, blacklistTerms)) s.add(p.asin);
+    }
+    return s;
+  }, [all, blacklistTerms]);
 
   async function fetchPage(q, pageNum, existing) {
     const data = await searchAmazon(q, pageNum);
@@ -201,6 +235,7 @@ export default function SearchAmazon() {
   }
 
   function toggleSelect(asin) {
+    if (blockedSet.has(asin)) return;
     setSelected(prev => {
       const next = new Set(prev);
       next.has(asin) ? next.delete(asin) : next.add(asin);
@@ -209,7 +244,7 @@ export default function SearchAmazon() {
   }
 
   const visible = all.slice((uiPage - 1) * PAGE_SIZE, uiPage * PAGE_SIZE);
-  const pageEligible = visible.filter(p => !addedMap[p.asin]).map(p => p.asin);
+  const pageEligible = visible.filter(p => !addedMap[p.asin] && !blockedSet.has(p.asin)).map(p => p.asin);
   const pageAllSelected = pageEligible.length > 0 && pageEligible.every(a => selected.has(a));
   const canGoNext = !loadingMore && (all.length > uiPage * PAGE_SIZE || hasMore);
 
@@ -225,8 +260,14 @@ export default function SearchAmazon() {
     });
   }
 
+  const categoryId = subCatId ? parseInt(subCatId) : mainCatId ? parseInt(mainCatId) : undefined;
+  const mains = categories.filter(c => !c.parent_id).sort((a, b) => a.name.localeCompare(b.name));
+  const subs = mainCatId
+    ? categories.filter(c => String(c.parent_id) === String(mainCatId)).sort((a, b) => a.name.localeCompare(b.name))
+    : [];
+
   async function handleImport() {
-    if (selected.size === 0 || adding) return;
+    if (selected.size === 0 || adding || !categoryId) return;
     const toAdd = all
       .filter(p => selected.has(p.asin))
       .map(p => ({
@@ -239,7 +280,7 @@ export default function SearchAmazon() {
     setAdding(true);
     setSearchError("");
     try {
-      const data = await addFromSearch(toAdd, undefined);
+      const data = await addFromSearch(toAdd, categoryId);
       setAddSummary(data.summary);
       setAddedMap(prev => {
         const map = { ...prev };
@@ -258,14 +299,14 @@ export default function SearchAmazon() {
     <div className="max-w-4xl">
       {/* Breadcrumb */}
       <div className="flex items-center gap-1.5 text-[11px] text-[#4a5568] mb-3">
-        <button onClick={() => navigate("/add")} className="hover:text-[#50A0FA] transition-colors">Add Products</button>
+        <button onClick={() => navigate("/add")} className="hover:text-[#50A0FA] transition-colors">{t("addProductsBreadcrumb")}</button>
         <span>/</span>
-        <span className="text-[#6b7785]">Search by Name</span>
+        <span className="text-[#6b7785]">{t("searchByName")}</span>
       </div>
 
       <div className="mb-6">
-        <h1 className="text-2xl font-medium text-white mb-1">Search Amazon</h1>
-        <p className="text-sm text-[#6b7785]">Search by product name, tick the ones you want, and import them in one go.</p>
+        <h1 className="text-2xl font-medium text-white mb-1">{t("searchAmazonTitle")}</h1>
+        <p className="text-sm text-[#6b7785]">{t("searchAmazonSubtitle")}</p>
       </div>
 
       {/* Search bar */}
@@ -273,7 +314,7 @@ export default function SearchAmazon() {
         <input
           value={query}
           onChange={e => setQuery(e.target.value)}
-          placeholder="e.g. laptop stand, wireless headphones..."
+          placeholder={t("searchInputPlaceholder")}
           className="flex-1 rounded-lg px-4 py-2.5 text-sm text-[#e8ecf2] outline-none"
           style={{
             background: "rgba(255,255,255,0.04)",
@@ -294,9 +335,9 @@ export default function SearchAmazon() {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
               </svg>
-              Searching…
+              {t("searching")}
             </>
-          ) : "Search →"}
+          ) : t("searchBtn")}
         </button>
       </form>
 
@@ -311,17 +352,17 @@ export default function SearchAmazon() {
       {addSummary && (
         <div className="mb-5 px-4 py-3 rounded-lg flex items-center gap-5 text-sm"
           style={{ background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.2)" }}>
-          <span className="text-green-400">✓ {addSummary.added} added</span>
-          {addSummary.blocked > 0 && <span className="text-red-400">⊘ {addSummary.blocked} blocked</span>}
-          {addSummary.skipped > 0 && <span className="text-[#6b7785]">↷ {addSummary.skipped} already existed</span>}
-          {addSummary.failed > 0 && <span className="text-red-400">✕ {addSummary.failed} failed</span>}
+          <span className="text-green-400">✓ {addSummary.added} {t("addedShort")}</span>
+          {addSummary.blocked > 0 && <span className="text-red-400">⊘ {addSummary.blocked} {t("blockedShort")}</span>}
+          {addSummary.skipped > 0 && <span className="text-[#6b7785]">↷ {addSummary.skipped} {t("alreadyExisted")}</span>}
+          {addSummary.failed > 0 && <span className="text-red-400">✕ {addSummary.failed} {t("failedShort")}</span>}
         </div>
       )}
 
       {/* Results */}
       {searched && (
         all.length === 0 ? (
-          <div className="text-center py-16 text-[#4a5568]">No products found for "{activeQuery}"</div>
+          <div className="text-center py-16 text-[#4a5568]">{t("noSearchResults", { query: activeQuery })}</div>
         ) : (
           <>
             {/* Toolbar */}
@@ -334,20 +375,64 @@ export default function SearchAmazon() {
                   className="text-xs px-2.5 py-1 rounded-md transition-colors disabled:opacity-40"
                   style={{ background: "rgba(80,160,250,0.1)", color: "#50A0FA", border: "1px solid rgba(80,160,250,0.2)" }}
                 >
-                  {pageAllSelected ? "Deselect page" : "Select page"}
+                  {pageAllSelected ? t("deselectPageBtn") : t("selectPageBtn")}
                 </button>
                 {selected.size > 0 && (
-                  <span className="text-xs text-[#6b7785]">{selected.size} selected</span>
+                  <span className="text-xs text-[#6b7785]">{t("nSelected", { n: selected.size })}</span>
                 )}
               </div>
               {selected.size > 0 && (
-                <div className="flex items-center gap-3">
-                  <span className="text-[10px] text-[#4a5568]">Uses {selected.size} scrape.do credit{selected.size !== 1 ? "s" : ""} (full details fetched per product)</span>
+                <span className="text-xs text-[#6b7785]">{t("nSelected", { n: selected.size })}</span>
+              )}
+            </div>
+
+            {/* Category picker + import — visible when products are selected */}
+            {selected.size > 0 && (
+              <div className="mb-4 p-4 rounded-xl flex flex-col gap-3"
+                style={{ background: "rgba(80,160,250,0.04)", border: "1px solid rgba(80,160,250,0.18)" }}>
+                <p className="text-xs font-medium text-[#e8ecf2]">{t("chooseCategory")}</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Main category */}
+                  <div>
+                    <label className="block text-[11px] text-[#6b7785] uppercase tracking-wider mb-1.5">{t("mainCategoryReq")} <span style={{ color: "#ef4444" }}>*</span></label>
+                    <select
+                      value={mainCatId}
+                      onChange={e => { setMainCatId(e.target.value); setSubCatId(""); }}
+                      className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                      style={{ background: "rgba(255,255,255,0.04)", border: `1px solid ${mainCatId ? "rgba(80,160,250,0.4)" : "rgba(239,68,68,0.4)"}`, color: "#e8ecf2", appearance: "none" }}
+                    >
+                      <option value="" style={{ background: "#0f1623", color: "#4a5568" }}>{t("selectMainCatOption")}</option>
+                      {mains.map(c => (
+                        <option key={c.id} value={c.id} style={{ background: "#0f1623" }}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  {/* Subcategory */}
+                  <div>
+                    <label className="block text-[11px] text-[#6b7785] uppercase tracking-wider mb-1.5">{t("subcategoryLabel")}</label>
+                    <select
+                      value={subCatId}
+                      onChange={e => setSubCatId(e.target.value)}
+                      disabled={!mainCatId || subs.length === 0}
+                      className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                      style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(80,160,250,0.18)", color: "#e8ecf2", appearance: "none", opacity: (!mainCatId || subs.length === 0) ? 0.4 : 1 }}
+                    >
+                      <option value="" style={{ background: "#0f1623", color: "#4a5568" }}>
+                        {subs.length === 0 ? t("noSubcategoriesOpt") : t("selectSubcatOption")}
+                      </option>
+                      {subs.map(c => (
+                        <option key={c.id} value={c.id} style={{ background: "#0f1623" }}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <span className="text-[10px] text-[#4a5568]">{t("creditsInfo", { search: amazonPage, imports: selected.size, total: amazonPage + selected.size })}</span>
                   <button
                     onClick={handleImport}
-                    disabled={adding}
-                    className="px-4 py-2 rounded-lg font-medium text-sm transition-all hover:-translate-y-0.5 disabled:opacity-50 flex items-center gap-2"
-                    style={{ background: "#50A0FA", color: "#0d1117", boxShadow: "0 0 14px rgba(80,160,250,0.4)" }}
+                    disabled={adding || !categoryId}
+                    className="px-5 py-2 rounded-lg font-medium text-sm transition-all hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+                    style={{ background: "#50A0FA", color: "#0d1117", boxShadow: categoryId ? "0 0 14px rgba(80,160,250,0.4)" : "none" }}
                   >
                     {adding ? (
                       <>
@@ -355,15 +440,17 @@ export default function SearchAmazon() {
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                         </svg>
-                        Importing…
+                        {t("importing")}
                       </>
-                    ) : `Import ${selected.size} product${selected.size !== 1 ? "s" : ""} →`}
+                    ) : !categoryId
+                      ? t("selectCatFirst")
+                      : `${t("importNow")} ${selected.size} →`}
                   </button>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
-            {/* List — 10 per page */}
+            {/* List */}
             <div className="flex flex-col gap-2">
               {visible.map(product => (
                 <ResultRow
@@ -372,6 +459,7 @@ export default function SearchAmazon() {
                   selected={selected.has(product.asin)}
                   onToggle={toggleSelect}
                   addedStatus={addedMap[product.asin] || null}
+                  isBlocked={blockedSet.has(product.asin)}
                 />
               ))}
             </div>
@@ -384,9 +472,9 @@ export default function SearchAmazon() {
                 className="px-4 py-2 rounded-lg text-sm transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 style={{ background: "rgba(255,255,255,0.04)", color: "#e8ecf2", border: "1px solid rgba(80,160,250,0.2)" }}
               >
-                ← Previous
+                {t("previous")}
               </button>
-              <span className="text-sm text-[#6b7785] px-2">Page {uiPage}</span>
+              <span className="text-sm text-[#6b7785] px-2">{t("pageLabel")} {uiPage}</span>
               <button
                 onClick={goNext}
                 disabled={!canGoNext}
@@ -399,13 +487,13 @@ export default function SearchAmazon() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                     </svg>
-                    Loading from Amazon…
+                    {t("loadingFromAmazon")}
                   </>
-                ) : "Next →"}
+                ) : t("nextPage")}
               </button>
             </div>
             {!hasMore && all.length <= uiPage * PAGE_SIZE && (
-              <p className="text-center text-[11px] text-[#4a5568] mt-2">No more results on Amazon.</p>
+              <p className="text-center text-[11px] text-[#4a5568] mt-2">{t("noMoreResults")}</p>
             )}
           </>
         )

@@ -151,19 +151,19 @@ function Layout() {
 
         {/* Nav section label */}
         <div className="px-4 pt-4 pb-1">
-          <span className="text-[9px] font-bold uppercase tracking-widest text-[#4a5568]">Navigation</span>
+          <span className="text-[9px] font-bold uppercase tracking-widest text-[#4a5568]">{t("nav_section")}</span>
         </div>
 
         {/* Nav */}
         <nav className="flex-1 px-2 pb-3 overflow-y-auto">
-          <NavItem to="/dashboard"  icon={<IconDashboard />}  label={t("dashboard")} />
-          <NavItem to="/products"   icon={<IconProducts />}   label={t("products")} />
-          <NavItem to="/categories" icon={<IconCategory />}  label="Categories" />
-          <NavItem to="/add"        icon={<IconAdd />}        label="Add Products" />
-          <NavItem to="/margin-config" icon={<IconMargin />}  label="Margin Config" />
-          <NavItem to="/blacklist"   icon={<IconBlacklist />}  label={t("blacklist")} />
-          <NavItem to="/recycle-bin" icon={<IconTrash />}      label="Recycle Bin" />
-          <NavItem to="/sync"        icon={<IconSync />}       label="Sync" />
+          <NavItem to="/dashboard"     icon={<IconDashboard />}  label={t("dashboard")} />
+          <NavItem to="/products"      icon={<IconProducts />}   label={t("products")} />
+          <NavItem to="/categories"    icon={<IconCategory />}   label={t("nav_categories")} />
+          <NavItem to="/add"           icon={<IconAdd />}        label={t("nav_addProducts")} />
+          <NavItem to="/margin-config" icon={<IconMargin />}     label={t("nav_marginConfig")} />
+          <NavItem to="/blacklist"     icon={<IconBlacklist />}  label={t("blacklist")} />
+          <NavItem to="/recycle-bin"   icon={<IconTrash />}      label={t("nav_recycleBin")} />
+          <NavItem to="/sync"          icon={<IconSync />}       label={t("nav_sync")} />
         </nav>
 
         {/* Logout */}

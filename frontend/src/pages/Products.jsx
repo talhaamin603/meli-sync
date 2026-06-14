@@ -9,15 +9,15 @@ function StatusBadge({ status, stock, t }) {
     return (
       <span className="px-2 py-0.5 rounded-md text-[11px] font-medium border whitespace-nowrap"
         style={{ background: "rgba(239,68,68,0.15)", color: "#ef4444", borderColor: "rgba(239,68,68,0.3)" }}>
-        Out of Stock
+        {t("outOfStockLabel")}
       </span>
     );
   }
   const styles = {
-    published: { bg: "rgba(34,197,94,0.15)",  fg: "#22c55e", border: "rgba(34,197,94,0.3)",  label: "Active" },
-    blocked:   { bg: "rgba(239,68,68,0.15)",  fg: "#ef4444", border: "rgba(239,68,68,0.3)",  label: "Blocked" },
-    failed:    { bg: "rgba(245,158,11,0.15)", fg: "#f59e0b", border: "rgba(245,158,11,0.3)", label: "Sync Failed" },
-    pending:   { bg: "rgba(80,160,250,0.15)", fg: "#50A0FA", border: "rgba(80,160,250,0.3)", label: "Pending" },
+    published: { bg: "rgba(34,197,94,0.15)",  fg: "#22c55e", border: "rgba(34,197,94,0.3)",  label: t("activeLabel") },
+    blocked:   { bg: "rgba(239,68,68,0.15)",  fg: "#ef4444", border: "rgba(239,68,68,0.3)",  label: t("blocked") },
+    failed:    { bg: "rgba(245,158,11,0.15)", fg: "#f59e0b", border: "rgba(245,158,11,0.3)", label: t("syncFailedLabel") },
+    pending:   { bg: "rgba(80,160,250,0.15)", fg: "#50A0FA", border: "rgba(80,160,250,0.3)", label: t("pending") },
   };
   const s = styles[status] || styles.pending;
   return (
@@ -120,10 +120,10 @@ function Products() {
         ));
         showToast(res.changed.join(" · "), true);
       } else {
-        showToast("Product is already up to date.", true);
+        showToast(t("productUpToDate"), true);
       }
     } catch (e) {
-      showToast(e?.response?.data?.detail || "Sync failed.", false);
+      showToast(e?.response?.data?.detail || t("syncFailedMsg"), false);
     } finally {
       setSyncingId(null);
     }
@@ -135,9 +135,9 @@ function Products() {
     try {
       await deleteProduct(confirmDelete.id);
       setAll((prev) => prev.filter((p) => p.id !== confirmDelete.id));
-      showToast(`"${confirmDelete.title?.slice(0, 40)}…" deleted.`, true);
+      showToast(t("productDeletedToast", { title: (confirmDelete.title?.slice(0, 40) ?? "") + "…" }), true);
     } catch {
-      showToast("Delete failed.", false);
+      showToast(t("deleteFailed"), false);
     } finally {
       setDeleting(false);
       setConfirmDelete(null);
@@ -207,12 +207,12 @@ function Products() {
                 <IconDelete />
               </div>
               <div>
-                <p className="text-white font-semibold text-sm">Delete Product</p>
-                <p className="text-[#6b7785] text-xs">This cannot be undone</p>
+                <p className="text-white font-semibold text-sm">{t("deleteProductTitle")}</p>
+                <p className="text-[#6b7785] text-xs">{t("cannotBeUndone")}</p>
               </div>
             </div>
             <p className="text-[#a0adbb] text-sm mb-5 leading-relaxed">
-              Are you sure you want to delete{" "}
+              {t("deleteConfirmQuestion")}{" "}
               <span className="text-white font-medium">
                 {confirmDelete.title?.length > 60
                   ? confirmDelete.title.slice(0, 60) + "…"
@@ -226,7 +226,7 @@ function Products() {
                 className="px-4 py-2 rounded-xl text-sm font-medium transition-all disabled:opacity-50"
                 style={{ background: "rgba(80,160,250,0.06)", border: "1px solid rgba(80,160,250,0.18)", color: "#a0adbb" }}
               >
-                Cancel
+                {t("cancel")}
               </button>
               <button
                 onClick={handleConfirmDelete}
@@ -234,7 +234,7 @@ function Products() {
                 className="px-4 py-2 rounded-xl text-sm font-semibold transition-all disabled:opacity-50"
                 style={{ background: "rgba(239,68,68,0.85)", color: "#fff", border: "none" }}
               >
-                {deleting ? "Deleting…" : "Yes, Delete"}
+                {deleting ? t("deletingLabel") : t("yesDelete")}
               </button>
             </div>
           </div>
@@ -261,12 +261,12 @@ function Products() {
                 <IconSync />
               </div>
               <div>
-                <p className="text-white font-semibold text-sm">Sync Product</p>
-                <p className="text-[#6b7785] text-xs">Checks Amazon · Updates Mercado Libre if needed</p>
+                <p className="text-white font-semibold text-sm">{t("syncProductTitle")}</p>
+                <p className="text-[#6b7785] text-xs">{t("syncProductSubtitle")}</p>
               </div>
             </div>
             <p className="text-[#a0adbb] text-sm mb-2 leading-relaxed">
-              Sync{" "}
+              {t("syncProductTitle")}{" "}
               <span className="text-white font-medium">
                 {confirmSync.title?.length > 55
                   ? confirmSync.title.slice(0, 55) + "…"
@@ -274,12 +274,12 @@ function Products() {
               </span>?
             </p>
             <ul className="text-xs text-[#6b7785] mb-5 space-y-1 pl-1">
-              <li>· Fetches latest price, rating &amp; Prime status from Amazon</li>
-              <li>· Updates your database if anything changed</li>
+              <li>· {t("syncDetail1")}</li>
+              <li>· {t("syncDetail2")}</li>
               {confirmSync.status === "published" && confirmSync.meli_item_id && (
-                <li>· Pushes new price to Mercado Libre automatically</li>
+                <li>· {t("syncDetail3")}</li>
               )}
-              <li className="text-[#4a5568]">· Uses 1 scrape.do credit</li>
+              <li className="text-[#4a5568]">· {t("syncDetail4")}</li>
             </ul>
             <div className="flex gap-2 justify-end">
               <button
@@ -287,14 +287,14 @@ function Products() {
                 className="px-4 py-2 rounded-xl text-sm font-medium transition-all"
                 style={{ background: "rgba(80,160,250,0.06)", border: "1px solid rgba(80,160,250,0.18)", color: "#a0adbb" }}
               >
-                Cancel
+                {t("cancel")}
               </button>
               <button
                 onClick={handleConfirmSync}
                 className="px-4 py-2 rounded-xl text-sm font-semibold transition-all"
                 style={{ background: "rgba(34,197,94,0.85)", color: "#0d1117", border: "none" }}
               >
-                Yes, Sync
+                {t("yesSync")}
               </button>
             </div>
           </div>
@@ -336,7 +336,7 @@ function Products() {
                 : { background: "rgba(80,160,250,0.06)", border: "1px solid rgba(80,160,250,0.15)" }
             }
           >
-            {k === "all" ? t("filterAll") : k === "failed" ? "Sync Failed" : t(k)} ({counts[k]})
+            {k === "all" ? t("filterAll") : k === "failed" ? t("syncFailedLabel") : t(k)} ({counts[k]})
           </button>
         ))}
       </div>
@@ -371,17 +371,17 @@ function Products() {
               >
                 <th className="p-3 font-medium" style={{ width: "72px", minWidth: "72px" }}></th>
                 <th className="text-left p-3 font-medium">{t("title")}</th>
-                <th className="text-left p-3 font-medium">Category</th>
-                <th className="text-right p-3 font-medium">Amazon Price</th>
-                <th className="text-right p-3 font-medium">ML Price</th>
-                <th className="text-right p-3 font-medium">Margin</th>
+                <th className="text-left p-3 font-medium">{t("categoryHeader")}</th>
+                <th className="text-right p-3 font-medium">{t("colAmazonPrice")}</th>
+                <th className="text-right p-3 font-medium">{t("colMlPrice")}</th>
+                <th className="text-right p-3 font-medium">{t("colMargin")}</th>
                 <th className="text-right p-3 font-medium">{t("stock")}</th>
                 <th className="text-left p-3 font-medium">
                   <button
                     onClick={() => setStatusSort(s => s === "asc" ? "desc" : "asc")}
                     className="inline-flex items-center gap-1 hover:text-white transition-colors"
                     style={{ color: statusSort ? "#50A0FA" : undefined }}
-                    title="Sort by status"
+                    title={t("sortByStatus")}
                   >
                     {t("status")}
                     <span className="flex flex-col leading-none" style={{ fontSize: 8 }}>
@@ -390,7 +390,7 @@ function Products() {
                     </span>
                   </button>
                 </th>
-                <th className="text-center p-3 font-medium">Actions</th>
+                <th className="text-center p-3 font-medium">{t("actionsHeader")}</th>
               </tr>
             </thead>
             <tbody>
@@ -492,7 +492,7 @@ function Products() {
                           )}
                           {profitPct !== null && (
                             <div className="text-[10px] text-[#6b7785]">
-                              {profitPct.toFixed(1)}% markup
+                              {profitPct.toFixed(1)}% {t("markupSuffix")}
                             </div>
                           )}
                         </div>
@@ -508,7 +508,7 @@ function Products() {
                       <div className="flex items-center justify-center gap-1.5">
                         {/* Edit */}
                         <ActionBtn
-                          title="Edit product"
+                          title={t("editProductTooltip")}
                           color="#50A0FA"
                           onClick={() => navigate(`/products/${p.id}/edit`, { state: { product: p } })}
                         >
@@ -517,7 +517,7 @@ function Products() {
 
                         {/* Sync */}
                         <ActionBtn
-                          title="Sync product (checks Amazon, updates Mercado Libre)"
+                          title={t("syncProductTooltip")}
                           color="#22c55e"
                           onClick={() => setConfirmSync(p)}
                           disabled={isSyncing}
@@ -528,7 +528,7 @@ function Products() {
 
                         {/* View on MercadoLibre */}
                         <ActionBtn
-                          title={url ? "View on MercadoLibre" : "Not published yet"}
+                          title={url ? t("viewOnMlTooltip") : t("notPublishedYet")}
                           color={url ? "#a0adbb" : "#3a4250"}
                           disabled={!url}
                           href={url}
@@ -538,7 +538,7 @@ function Products() {
 
                         {/* Delete */}
                         <ActionBtn
-                          title="Delete product"
+                          title={t("deleteProductTooltip")}
                           color="#ef4444"
                           onClick={() => setConfirmDelete(p)}
                         >

@@ -6,20 +6,21 @@ import { calcPrice } from "../utils/pricing.js";
 
 /* ─── Status badge ─────────────────────────────────────────── */
 function DashboardStatusBadge({ status, stock }) {
+  const { t } = useTranslation();
   if (stock === 0) {
     return (
       <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold border inline-flex items-center gap-1"
         style={{ background: "rgba(239,68,68,0.12)", color: "#ef4444", borderColor: "rgba(239,68,68,0.25)" }}>
         <span className="w-1.5 h-1.5 rounded-full inline-block bg-red-500" />
-        Out of Stock
+        {t("outOfStockLabel")}
       </span>
     );
   }
   const map = {
-    published: { bg: "rgba(34,197,94,0.12)",  fg: "#22c55e", border: "rgba(34,197,94,0.25)",  label: "Active" },
-    blocked:   { bg: "rgba(239,68,68,0.12)",  fg: "#ef4444", border: "rgba(239,68,68,0.25)",  label: "Blocked" },
-    failed:    { bg: "rgba(245,158,11,0.12)", fg: "#f59e0b", border: "rgba(245,158,11,0.25)", label: "Sync Failed" },
-    pending:   { bg: "rgba(80,160,250,0.12)", fg: "#50A0FA", border: "rgba(80,160,250,0.25)", label: "Pending" },
+    published: { bg: "rgba(34,197,94,0.12)",  fg: "#22c55e", border: "rgba(34,197,94,0.25)",  label: t("activeLabel") },
+    blocked:   { bg: "rgba(239,68,68,0.12)",  fg: "#ef4444", border: "rgba(239,68,68,0.25)",  label: t("blocked") },
+    failed:    { bg: "rgba(245,158,11,0.12)", fg: "#f59e0b", border: "rgba(245,158,11,0.25)", label: t("syncFailedLabel") },
+    pending:   { bg: "rgba(80,160,250,0.12)", fg: "#50A0FA", border: "rgba(80,160,250,0.25)", label: t("pending") },
   };
   const s = map[status] || map.pending;
   return (
@@ -97,6 +98,7 @@ function StatCard({ label, value, iconColor, iconBg, icon, subtext, accentColor,
 
 /* ─── Mini donut ring ───────────────────────────────────────── */
 function DonutRing({ pctPublished, pctPending, pctBlocked, total }) {
+  const { t } = useTranslation();
   const r = 36;
   const circ = 2 * Math.PI * r;
   const strokeWidth = 7;
@@ -150,7 +152,7 @@ function DonutRing({ pctPublished, pctPending, pctBlocked, total }) {
       {/* Center label */}
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <div className="text-lg font-black text-white leading-none">{total}</div>
-        <div className="text-[9px] text-[#6b7785] font-semibold uppercase tracking-wider mt-0.5">Total</div>
+        <div className="text-[9px] text-[#6b7785] font-semibold uppercase tracking-wider mt-0.5">{t("totalLabel")}</div>
       </div>
     </div>
   );
@@ -281,12 +283,12 @@ function Dashboard() {
     .filter(n => n >= safePage - 2 && n <= safePage + 2);
 
   const filterTabs = [
-    { key: "all",          label: "All",          count: products.length },
-    { key: "pending",      label: "Pending",       count: products.filter(p => p.status === "pending").length },
-    { key: "published",    label: "Active",        count: products.filter(p => p.status === "published").length },
-    { key: "blocked",      label: "Blocked",       count: products.filter(p => p.status === "blocked").length },
-    { key: "failed",       label: "Sync Failed",   count: products.filter(p => p.status === "failed").length },
-    { key: "out_of_stock", label: "Out of Stock",  count: products.filter(p => p.stock === 0).length },
+    { key: "all",          label: t("filterAll"),        count: products.length },
+    { key: "pending",      label: t("pending"),           count: products.filter(p => p.status === "pending").length },
+    { key: "published",    label: t("activeLabel"),       count: products.filter(p => p.status === "published").length },
+    { key: "blocked",      label: t("blocked"),           count: products.filter(p => p.status === "blocked").length },
+    { key: "failed",       label: t("syncFailedLabel"),   count: products.filter(p => p.status === "failed").length },
+    { key: "out_of_stock", label: t("outOfStockLabel"),   count: products.filter(p => p.stock === 0).length },
   ];
 
   return (
@@ -303,7 +305,7 @@ function Dashboard() {
               style={{ background: "rgba(34,197,94,0.12)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.25)" }}
             >
               <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-              Live
+              {t("liveLabel")}
             </span>
           </div>
           <p className="text-sm text-[#6b7785]">{t("dashboardSubtitle")}</p>
@@ -340,7 +342,7 @@ function Dashboard() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
             </svg>
           }
-          subtext="Full catalog"
+          subtext={t("fullCatalog")}
           delay={0.1}
         />
         <StatCard
@@ -354,7 +356,7 @@ function Dashboard() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           }
-          subtext={`${pctPublished.toFixed(1)}% of total`}
+          subtext={t("pctOfTotal", { pct: pctPublished.toFixed(1) })}
           delay={0.2}
         />
         <StatCard
@@ -368,7 +370,7 @@ function Dashboard() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
             </svg>
           }
-          subtext={`${((blocked / safe) * 100).toFixed(1)}% of total`}
+          subtext={t("pctOfTotal", { pct: ((blocked / safe) * 100).toFixed(1) })}
           delay={0.3}
         />
         <StatCard
@@ -382,7 +384,7 @@ function Dashboard() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           }
-          subtext={`${pctPending.toFixed(1)}% of total`}
+          subtext={t("pctOfTotal", { pct: pctPending.toFixed(1) })}
           delay={0.4}
         />
       </div>
@@ -415,14 +417,14 @@ function Dashboard() {
           />
 
           <div className="relative z-10">
-            <div className="text-sm font-bold text-white mb-5">MercadoLibre Overview</div>
+            <div className="text-sm font-bold text-white mb-5">{t("mlOverview")}</div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
               {/* Active on ML */}
               <div className="rounded-xl p-4" style={{ background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.15)" }}>
                 <div className="flex items-center justify-between mb-3">
-                  <div className="text-[10px] uppercase tracking-widest font-bold text-[#6b7785]">Active on Mercado Libre</div>
+                  <div className="text-[10px] uppercase tracking-widest font-bold text-[#6b7785]">{t("activeOnMl")}</div>
                   <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "rgba(34,197,94,0.12)" }}>
                     <svg className="w-4 h-4" fill="none" stroke="#22c55e" viewBox="0 0 24 24" strokeWidth="2.2">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -433,14 +435,14 @@ function Dashboard() {
                   {published.toLocaleString()}
                 </div>
                 <div className="text-[11px] mt-1.5 font-medium" style={{ color: "#22c55e99" }}>
-                  {pctPublished.toFixed(1)}% of total catalog
+                  {t("pctOfCatalog", { pct: pctPublished.toFixed(1) })}
                 </div>
               </div>
 
               {/* Added in last 24h */}
               <div className="rounded-xl p-4" style={{ background: "rgba(80,160,250,0.06)", border: "1px solid rgba(80,160,250,0.15)" }}>
                 <div className="flex items-center justify-between mb-3">
-                  <div className="text-[10px] uppercase tracking-widest font-bold text-[#6b7785]">Added in Last 24h</div>
+                  <div className="text-[10px] uppercase tracking-widest font-bold text-[#6b7785]">{t("addedLast24h")}</div>
                   <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "rgba(80,160,250,0.12)" }}>
                     <svg className="w-4 h-4" fill="none" stroke="#50A0FA" viewBox="0 0 24 24" strokeWidth="2.2">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -462,7 +464,11 @@ function Dashboard() {
                     </svg>
                   )}
                   <span className="text-[11px] font-bold" style={{ color: deltaColor }}>
-                    {delta === 0 ? "Same as yesterday" : `${Math.abs(delta)} ${deltaUp ? "more" : "fewer"} than yesterday`}
+                    {delta === 0
+                      ? t("sameAsYesterday")
+                      : deltaUp
+                      ? t("moreVsYesterday", { n: Math.abs(delta) })
+                      : t("fewerVsYesterday", { n: Math.abs(delta) })}
                   </span>
                 </div>
               </div>
@@ -492,12 +498,12 @@ function Dashboard() {
                 style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", padding: "2px 8px", borderRadius: "999px" }}
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                Live
+                {t("liveLabel")}
               </span>
             </div>
 
             <div className="mb-1">
-              <div className="text-[11px] text-[#6b7785] mb-1">Current rate</div>
+              <div className="text-[11px] text-[#6b7785] mb-1">{t("currentRate")}</div>
               <div className="text-4xl font-black tracking-tight"
                 style={{ color: "#50A0FA", textShadow: "0 0 30px rgba(80,160,250,0.4)" }}
               >
@@ -548,7 +554,7 @@ function Dashboard() {
           <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: "linear-gradient(90deg, transparent, rgba(80,160,250,0.6), transparent)" }} />
 
           <div className="flex items-start justify-between mb-3">
-            <div className="text-[10px] uppercase tracking-widest font-bold text-[#6b7785]">Sales This Month</div>
+            <div className="text-[10px] uppercase tracking-widest font-bold text-[#6b7785]">{t("salesThisMonth")}</div>
             <div className="w-8 h-8 rounded-xl flex items-center justify-center text-lg"
               style={{ background: "rgba(80,160,250,0.1)", boxShadow: "0 4px 12px rgba(80,160,250,0.2)" }}>
               💵
@@ -562,7 +568,7 @@ function Dashboard() {
 
           {/* Order count */}
           <div className="text-[11px] text-[#6b7785] mb-2">
-            0 orders this month
+            {t("zeroOrders")}
           </div>
 
           {/* Delta */}
@@ -570,7 +576,7 @@ function Dashboard() {
             <svg className="w-3.5 h-3.5" fill="none" stroke="#6b7785" viewBox="0 0 24 24" strokeWidth="3">
               <path strokeLinecap="round" strokeLinejoin="round" d="M20 12H4" />
             </svg>
-            <span className="text-[11px] font-bold text-[#6b7785]">No data yet</span>
+            <span className="text-[11px] font-bold text-[#6b7785]">{t("noDataYet")}</span>
           </div>
         </div>
 
@@ -579,16 +585,16 @@ function Dashboard() {
           const todayStart = new Date(); todayStart.setHours(0,0,0,0);
           const syncsToday = syncHistory.filter(s => new Date(s.started_at) >= todayStart).length;
           const lastSync = syncHistory.find(s => s.finished_at);
-          let lastSyncLabel = "Never";
+          let lastSyncLabel = t("neverLabel");
           if (lastSync) {
             const diffMs = Date.now() - new Date(lastSync.finished_at).getTime();
             const diffMin = Math.floor(diffMs / 60000);
             const diffHr  = Math.floor(diffMin / 60);
             const diffDay = Math.floor(diffHr / 24);
-            lastSyncLabel = diffMin < 1 ? "Just now"
-              : diffMin < 60 ? `${diffMin} min ago`
-              : diffHr  < 24 ? `${diffHr} hr ago`
-              : `${diffDay}d ago`;
+            lastSyncLabel = diffMin < 1 ? t("justNow")
+              : diffMin < 60 ? t("minAgo", { n: diffMin })
+              : diffHr  < 24 ? t("hrAgo", { n: diffHr })
+              : t("dAgo", { n: diffDay });
           }
           return (
             <div
@@ -604,7 +610,7 @@ function Dashboard() {
               <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: "linear-gradient(90deg, transparent, rgba(80,160,250,0.6), transparent)" }} />
 
               <div className="flex items-start justify-between mb-3">
-                <div className="text-[10px] uppercase tracking-widest font-bold text-[#6b7785]">Amazon Sync</div>
+                <div className="text-[10px] uppercase tracking-widest font-bold text-[#6b7785]">{t("amazonSyncShort")}</div>
                 <div className="w-8 h-8 rounded-xl flex items-center justify-center"
                   style={{ background: "rgba(80,160,250,0.1)", boxShadow: "0 4px 12px rgba(80,160,250,0.2)" }}>
                   <svg className={`w-4 h-4 text-[#50A0FA] ${syncsToday > 0 ? "animate-spin" : ""}`} style={{ animationDuration: "3s" }} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.2">
@@ -618,7 +624,7 @@ function Dashboard() {
               </div>
 
               <div className="text-[11px] text-[#6b7785] mb-2">
-                {syncsToday === 1 ? "sync run today" : "syncs run today"}
+                {syncsToday === 1 ? t("syncRunToday") : t("syncsRunToday")}
               </div>
 
               <div className="flex items-center gap-1.5">
@@ -626,7 +632,7 @@ function Dashboard() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <span className="text-[11px] font-bold" style={{ color: lastSync ? "#50A0FA" : "#6b7785" }}>
-                  Last sync: {lastSyncLabel}
+                  {t("lastSyncLabel")} {lastSyncLabel}
                 </span>
               </div>
             </div>
@@ -656,7 +662,7 @@ function Dashboard() {
               <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: `linear-gradient(90deg, transparent, ${accentColor}80, transparent)` }} />
 
               <div className="flex items-start justify-between mb-3">
-                <div className="text-[10px] uppercase tracking-widest font-bold text-[#6b7785]">Needs Attention</div>
+                <div className="text-[10px] uppercase tracking-widest font-bold text-[#6b7785]">{t("needsAttention")}</div>
                 <div className="w-8 h-8 rounded-xl flex items-center justify-center text-lg"
                   style={{ background: `${accentColor}18`, boxShadow: `0 4px 12px ${accentColor}30` }}>
                   {count === 0 ? "✅" : "⚠️"}
@@ -668,7 +674,7 @@ function Dashboard() {
               </div>
 
               <div className="text-[11px] text-[#6b7785] mb-2">
-                {count === 0 ? "All products in stock" : `product${count !== 1 ? "s" : ""} out of stock`}
+                {count === 0 ? t("allInStock") : t("outOfStockSubtitle", { s: count !== 1 ? "s" : "" })}
               </div>
 
               <div className="flex items-center gap-1.5">
@@ -677,10 +683,10 @@ function Dashboard() {
                 </svg>
                 <span className="text-[11px] font-bold" style={{ color: accentColor }}>
                   {urgent
-                    ? `${publishedOos} listed on ML — urgent`
+                    ? t("listedMlUrgent", { n: publishedOos })
                     : count > 0
-                    ? "Not listed, restock soon"
-                    : "No action needed"}
+                    ? t("notListedRestock")
+                    : t("noActionNeeded")}
                 </span>
               </div>
             </div>
@@ -721,7 +727,7 @@ function Dashboard() {
               <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: `linear-gradient(90deg, transparent, ${accentColor}80, transparent)` }} />
 
               <div className="flex items-start justify-between mb-3">
-                <div className="text-[10px] uppercase tracking-widest font-bold text-[#6b7785]">Avg. Profit Margin</div>
+                <div className="text-[10px] uppercase tracking-widest font-bold text-[#6b7785]">{t("avgProfitMargin")}</div>
                 <div className="w-8 h-8 rounded-xl flex items-center justify-center"
                   style={{ background: `${accentColor}18`, boxShadow: `0 4px 12px ${accentColor}25` }}>
                   <svg className="w-4 h-4" fill="none" stroke={accentColor} viewBox="0 0 24 24" strokeWidth="2.2">
@@ -735,7 +741,7 @@ function Dashboard() {
               </div>
 
               <div className="text-[11px] text-[#6b7785] mb-2">
-                across {withPricing.length} priced product{withPricing.length !== 1 ? "s" : ""}
+                {t("acrossPricedProducts", { n: withPricing.length, s: withPricing.length !== 1 ? "s" : "" })}
               </div>
 
               <div className="flex items-center gap-1.5">
@@ -755,9 +761,9 @@ function Dashboard() {
                   </svg>
                 )}
                 <span className="text-[11px] font-bold" style={{ color: accentColor }}>
-                  {trendUp   ? `+${Math.abs(trend).toFixed(1)}% vs older products` :
-                   trendDown ? `-${Math.abs(trend).toFixed(1)}% vs older products` :
-                               "Stable margin"}
+                  {trendUp   ? t("trendVsOlderUp",   { pct: Math.abs(trend).toFixed(1) }) :
+                   trendDown ? t("trendVsOlderDown", { pct: Math.abs(trend).toFixed(1) }) :
+                               t("stableMargin")}
                 </span>
               </div>
             </div>
@@ -785,7 +791,7 @@ function Dashboard() {
             </div>
             <div>
               <div className="text-sm font-bold text-white">{t("recentProducts")}</div>
-              <div className="text-[10px] text-[#6b7785]">{PAGE_SIZE} items per page</div>
+              <div className="text-[10px] text-[#6b7785]">{t("itemsPerPage", { n: PAGE_SIZE })}</div>
             </div>
           </div>
           <Link
@@ -863,7 +869,7 @@ function Dashboard() {
             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            Sort by Latest Update
+            {t("sortByLatestBtn")}
           </button>
         </div>
 
@@ -874,14 +880,14 @@ function Dashboard() {
                 style={{ background: "rgba(255,255,255,0.015)" }}
               >
                 {[
-                  { col: "product",  label: "Product",      align: "left",   minW: 260 },
-                  { col: "asin",     label: "ASIN",         align: "left",   minW: 110 },
-                  { col: "category", label: "Category",     align: "left",   minW: 150 },
-                  { col: "amazon",   label: "Amazon Price", align: "right",  minW: 110 },
-                  { col: "ml",       label: "ML Price",     align: "right",  minW: 110 },
-                  { col: "margin",   label: "Margin",       align: "right",  minW: 80  },
-                  { col: "stock",    label: "Stock",        align: "right",  minW: 70  },
-                  { col: "status",   label: "Status",       align: "center", minW: 110 },
+                  { col: "product",  label: t("colProduct"),      align: "left",   minW: 260 },
+                  { col: "asin",     label: "ASIN",               align: "left",   minW: 110 },
+                  { col: "category", label: t("categoryHeader"),   align: "left",   minW: 150 },
+                  { col: "amazon",   label: t("colAmazonPrice"),   align: "right",  minW: 110 },
+                  { col: "ml",       label: t("colMlPrice"),       align: "right",  minW: 110 },
+                  { col: "margin",   label: t("colMargin"),        align: "right",  minW: 80  },
+                  { col: "stock",    label: t("stock"),            align: "right",  minW: 70  },
+                  { col: "status",   label: t("status"),           align: "center", minW: 110 },
                 ].map(({ col, label, align, minW }) => (
                   <th key={col} className={`px-4 py-3 text-${align}`} style={{ minWidth: minW }}>
                     <button
@@ -1012,7 +1018,7 @@ function Dashboard() {
                           )}
                           {profitPct !== null && (
                             <div className="text-[10px] text-[#6b7785]">
-                              {profitPct.toFixed(1)}% markup
+                              {profitPct.toFixed(1)}% {t("markupSuffix")}
                             </div>
                           )}
                         </div>
@@ -1058,11 +1064,11 @@ function Dashboard() {
             style={{ borderTop: "1px solid rgba(255,255,255,0.035)" }}
           >
             <span className="text-[11px] text-[#4a5568]">
-              Showing{" "}
+              {t("showing")}{" "}
               <span className="text-[#6b7785] font-bold">
                 {sortedProducts.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, sortedProducts.length)}
               </span>{" "}
-              of <span className="text-[#6b7785] font-bold">{sortedProducts.length}</span> products
+              {t("of")} <span className="text-[#6b7785] font-bold">{sortedProducts.length}</span> {t("productsLabel")}
             </span>
 
             <div className="flex items-center gap-1">
@@ -1078,7 +1084,7 @@ function Dashboard() {
                   cursor: safePage === 1 ? "not-allowed" : "pointer",
                 }}
               >
-                First
+                {t("first")}
               </button>
 
               {/* Prev arrow */}
@@ -1149,7 +1155,7 @@ function Dashboard() {
                   cursor: safePage === totalPages ? "not-allowed" : "pointer",
                 }}
               >
-                Last
+                {t("last")}
               </button>
             </div>
           </div>

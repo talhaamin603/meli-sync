@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import {
   getRecycleBin, restoreProduct, permanentDeleteProduct,
   emptyRecycleBin, restoreAllProducts,
@@ -20,6 +21,7 @@ function timeAgo(dateStr) {
 }
 
 function ConfirmModal({ title, message, confirmLabel, danger, onConfirm, onCancel, busy }) {
+  const { t } = useTranslation();
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center"
       style={{ background: "rgba(0,0,0,0.65)" }}
@@ -39,7 +41,7 @@ function ConfirmModal({ title, message, confirmLabel, danger, onConfirm, onCance
           <button onClick={onCancel} disabled={busy}
             className="px-4 py-2 rounded-xl text-sm font-medium transition-all disabled:opacity-50"
             style={{ background: "rgba(80,160,250,0.06)", border: "1px solid rgba(80,160,250,0.18)", color: "#a0adbb" }}>
-            Cancel
+            {t("cancel")}
           </button>
           <button onClick={onConfirm} disabled={busy}
             className="px-4 py-2 rounded-xl text-sm font-semibold transition-all disabled:opacity-60"
@@ -47,7 +49,7 @@ function ConfirmModal({ title, message, confirmLabel, danger, onConfirm, onCance
               background: danger ? "rgba(239,68,68,0.85)" : "#50A0FA",
               color: danger ? "#fff" : "#0d1117",
             }}>
-            {busy ? "Please wait…" : confirmLabel}
+            {busy ? t("pleaseWait") : confirmLabel}
           </button>
         </div>
       </div>
@@ -56,6 +58,7 @@ function ConfirmModal({ title, message, confirmLabel, danger, onConfirm, onCance
 }
 
 export default function RecycleBin() {
+  const { t } = useTranslation();
   const [items, setItems]       = useState([]);
   const [loading, setLoading]   = useState(true);
   const [toast, setToast]       = useState(null);
@@ -71,7 +74,7 @@ export default function RecycleBin() {
     setLoading(true);
     getRecycleBin()
       .then(data => setItems(Array.isArray(data) ? data : (data.products || [])))
-      .catch(() => showToast("Failed to load recycle bin.", false))
+      .catch(() => showToast(t("recycleBinLoadFailed"), false))
       .finally(() => setLoading(false));
   }
 
@@ -82,9 +85,9 @@ export default function RecycleBin() {
     try {
       await restoreProduct(id);
       setItems(prev => prev.filter(p => p.id !== id));
-      showToast("Product restored successfully.");
+      showToast(t("productRestored"));
     } catch {
-      showToast("Restore failed.", false);
+      showToast(t("restoreFailed"), false);
     } finally {
       setBusy(false);
       setModal(null);
@@ -96,9 +99,9 @@ export default function RecycleBin() {
     try {
       await permanentDeleteProduct(id);
       setItems(prev => prev.filter(p => p.id !== id));
-      showToast("Product permanently deleted.");
+      showToast(t("productDeleted"));
     } catch {
-      showToast("Delete failed.", false);
+      showToast(t("deleteFailed"), false);
     } finally {
       setBusy(false);
       setModal(null);
@@ -110,9 +113,9 @@ export default function RecycleBin() {
     try {
       const res = await emptyRecycleBin();
       setItems([]);
-      showToast(`${res.deleted} product(s) permanently deleted.`);
+      showToast(t("nProductsPermanentlyDeleted", { n: res.deleted }));
     } catch {
-      showToast("Failed to empty bin.", false);
+      showToast(t("emptyBinFailed"), false);
     } finally {
       setBusy(false);
       setModal(null);
@@ -124,9 +127,9 @@ export default function RecycleBin() {
     try {
       const res = await restoreAllProducts();
       setItems([]);
-      showToast(`${res.restored} product(s) restored.`);
+      showToast(t("nProductsRestored", { n: res.restored }));
     } catch {
-      showToast("Failed to restore all.", false);
+      showToast(t("restoreAllFailed"), false);
     } finally {
       setBusy(false);
       setModal(null);
@@ -135,23 +138,23 @@ export default function RecycleBin() {
 
   const modalConfig = {
     delete_one: {
-      title: "Permanently Delete",
-      message: "This product will be gone forever and cannot be recovered. Are you sure?",
-      confirmLabel: "Delete Forever",
+      title: t("permanentlyDeleteTitle"),
+      message: t("permanentDeleteWarning"),
+      confirmLabel: t("deleteForeverBtn"),
       danger: true,
       onConfirm: () => handlePermanentDelete(modal?.id),
     },
     empty_bin: {
-      title: "Empty Recycle Bin",
-      message: `All ${items.length} product(s) in the bin will be permanently deleted. This cannot be undone.`,
-      confirmLabel: "Empty Bin",
+      title: t("emptyBinTitle"),
+      message: t("emptyBinWarning", { n: items.length }),
+      confirmLabel: t("emptyBin"),
       danger: true,
       onConfirm: handleEmptyBin,
     },
     restore_all: {
-      title: "Restore All Products",
-      message: `All ${items.length} product(s) will be moved back to your active catalog.`,
-      confirmLabel: "Restore All",
+      title: t("restoreAllTitle"),
+      message: t("restoreAllMsg", { n: items.length }),
+      confirmLabel: t("restoreAll"),
       danger: false,
       onConfirm: handleRestoreAll,
     },
@@ -193,9 +196,9 @@ export default function RecycleBin() {
             </svg>
           </div>
           <div>
-            <h1 className="text-2xl font-medium text-white">Recycle Bin</h1>
+            <h1 className="text-2xl font-medium text-white">{t("recycleBinTitle")}</h1>
             <p className="text-sm text-[#6b7785]">
-              Deleted products are kept for {BIN_DAYS} days before being permanently removed.
+              {t("recycleBinSubtitle", { days: BIN_DAYS })}
             </p>
           </div>
         </div>
@@ -204,21 +207,21 @@ export default function RecycleBin() {
       {/* Bulk action bar */}
       {items.length > 0 && (
         <div className="flex items-center gap-3 mb-4">
-          <span className="text-[11px] text-[#6b7785]">{items.length} item{items.length !== 1 ? "s" : ""} in bin</span>
+          <span className="text-[11px] text-[#6b7785]">{t("itemsInBin", { n: items.length, s: items.length !== 1 ? "s" : "" })}</span>
           <div className="flex gap-2 ml-auto">
             <button
               onClick={() => setModal({ type: "restore_all" })}
               className="px-4 py-2 rounded-xl text-sm font-medium transition-all"
               style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)", color: "#22c55e" }}
             >
-              Restore All
+              {t("restoreAll")}
             </button>
             <button
               onClick={() => setModal({ type: "empty_bin" })}
               className="px-4 py-2 rounded-xl text-sm font-medium transition-all"
               style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", color: "#ef4444" }}
             >
-              Empty Bin
+              {t("emptyBin")}
             </button>
           </div>
         </div>
@@ -232,7 +235,7 @@ export default function RecycleBin() {
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
             </svg>
-            Loading…
+            {t("loadingLabel")}
           </div>
         ) : items.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
@@ -245,7 +248,7 @@ export default function RecycleBin() {
                 <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
               </svg>
             </div>
-            <p className="text-[#6b7785] text-sm">Recycle bin is empty</p>
+            <p className="text-[#6b7785] text-sm">{t("binIsEmpty")}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -254,12 +257,12 @@ export default function RecycleBin() {
                 <tr className="text-[11px] uppercase tracking-wider text-[#6b7785]"
                   style={{ background: "rgba(80,160,250,0.04)" }}>
                   <th className="p-3 w-12"></th>
-                  <th className="text-left p-3 font-medium">Product</th>
+                  <th className="text-left p-3 font-medium">{t("productCol")}</th>
                   <th className="text-left p-3 font-medium">ASIN</th>
-                  <th className="text-right p-3 font-medium">Price</th>
-                  <th className="text-center p-3 font-medium">Deleted</th>
-                  <th className="text-center p-3 font-medium">Expires in</th>
-                  <th className="text-center p-3 font-medium">Actions</th>
+                  <th className="text-right p-3 font-medium">{t("price")}</th>
+                  <th className="text-center p-3 font-medium">{t("deletedCol")}</th>
+                  <th className="text-center p-3 font-medium">{t("expiresInCol")}</th>
+                  <th className="text-center p-3 font-medium">{t("actionsCol")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -309,7 +312,7 @@ export default function RecycleBin() {
                             color: urgent ? "#ef4444" : "#f59e0b",
                             border: `1px solid ${urgent ? "rgba(239,68,68,0.25)" : "rgba(245,158,11,0.2)"}`,
                           }}>
-                          {days === 0 ? "Today" : `${days}d`}
+                          {days === 0 ? t("todayLabel") : `${days}d`}
                         </span>
                       </td>
 
@@ -319,7 +322,7 @@ export default function RecycleBin() {
                           {/* Restore */}
                           <button
                             onClick={() => handleRestore(p.id)}
-                            title="Restore product"
+                            title={t("restore")}
                             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all"
                             style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.25)", color: "#22c55e" }}
                           >
@@ -327,13 +330,13 @@ export default function RecycleBin() {
                               <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
                               <path d="M3 3v5h5"/>
                             </svg>
-                            Restore
+                            {t("restore")}
                           </button>
 
                           {/* Delete permanently */}
                           <button
                             onClick={() => setModal({ type: "delete_one", id: p.id })}
-                            title="Delete permanently"
+                            title={t("deleteForeverBtn")}
                             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all"
                             style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#ef4444" }}
                           >
@@ -341,7 +344,7 @@ export default function RecycleBin() {
                               <polyline points="3 6 5 6 21 6"/>
                               <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
                             </svg>
-                            Delete Forever
+                            {t("deleteForeverBtn")}
                           </button>
                         </div>
                       </td>

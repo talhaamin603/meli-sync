@@ -231,6 +231,7 @@ function AddProduct() {
   const emptyForm = {
     asin: "", title: "", description: "",
     amazon_price_usd: "", stock: 10, is_prime: true,
+    brand: "", rating: "", total_ratings: "",
   };
 
   const [form, setForm]       = useState(emptyForm);
@@ -297,6 +298,8 @@ function AddProduct() {
         ...form,
         amazon_price_usd: parseFloat(form.amazon_price_usd) || 0,
         stock: parseInt(form.stock) || 0,
+        rating: form.rating !== "" ? parseFloat(form.rating) : 0,
+        total_ratings: form.total_ratings !== "" ? parseInt(form.total_ratings) : 0,
         image_url: filled[0],
         images: filled,
         ...(categoryId ? { category_id: categoryId } : {}),
@@ -374,6 +377,41 @@ function AddProduct() {
             style={iStyle}
           />
         </Field>
+
+        {/* Brand + Rating */}
+        <div className="grid grid-cols-3 gap-4">
+          <div className="col-span-1">
+            <Field label="Brand Name">
+              <input
+                value={form.brand}
+                onChange={(e) => update("brand", e.target.value)}
+                placeholder="e.g. Sony"
+                className={iClass}
+                style={iStyle}
+              />
+            </Field>
+          </div>
+          <Field label="Rating (0–5)">
+            <input
+              type="number" step="0.1" min="0" max="5"
+              value={form.rating}
+              onChange={(e) => update("rating", e.target.value)}
+              placeholder="4.5"
+              className={iClass}
+              style={iStyle}
+            />
+          </Field>
+          <Field label="Total Ratings">
+            <input
+              type="number" min="0"
+              value={form.total_ratings}
+              onChange={(e) => update("total_ratings", e.target.value)}
+              placeholder="2 712"
+              className={iClass}
+              style={iStyle}
+            />
+          </Field>
+        </div>
 
         {/* Description */}
         <Field label={t("description")}>

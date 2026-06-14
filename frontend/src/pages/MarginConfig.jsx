@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { getMarginRules, updateMarginRules, getExchangeRate, recalculatePrices } from "../api.js";
 import { calcPrice, calcML, SHIPPING, INSURANCE } from "../utils/pricing.js";
 
 export default function MarginConfig() {
+  const { t } = useTranslation();
   const [rules, setRules]         = useState([]);
   const [loading, setLoading]     = useState(true);
   const [saving, setSaving]       = useState(false);
@@ -20,7 +22,7 @@ export default function MarginConfig() {
         setRules(rulesData.rules || []);
         setRate(rateData.usd_to_cop || null);
       })
-      .catch(() => setError("Failed to load margin rules."))
+      .catch(() => setError(t("marginLoadFailed")))
       .finally(() => setLoading(false));
   }, []);
 
@@ -75,23 +77,23 @@ export default function MarginConfig() {
       const mx = parseFloat(r.max_price) || 0;
       const mk = parseFloat(r.markup_pct) || 0;
       if (mn >= mx) {
-        setError(`Row ${r.sort_order}: min price must be less than max price.`);
+        setError(t("marginRowMinMax", { row: r.sort_order }));
         return;
       }
       if (mk < 0) {
-        setError("Markup % cannot be negative.");
+        setError(t("marginMarkupNegative"));
         return;
       }
       if (i > 0) {
         const prevMax = parseInt(rules[i - 1].max_price, 10) || 0;
         if (mn !== prevMax + 1) {
-          setError(`Row ${r.sort_order}: min must be exactly ${prevMax + 1} — no gaps between ranges are allowed.`);
+          setError(t("marginRowGap", { row: r.sort_order, val: prevMax + 1 }));
           return;
         }
       }
     }
     if (Object.keys(minErrors).length > 0 || Object.keys(maxErrors).length > 0) {
-      setError("Please fix the highlighted errors before saving.");
+      setError(t("marginFixErrors"));
       return;
     }
     setError("");
@@ -108,7 +110,7 @@ export default function MarginConfig() {
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch {
-      setError("Failed to save. Please try again.");
+      setError(t("marginSaveFailed"));
     } finally {
       setSaving(false);
     }
@@ -123,7 +125,7 @@ export default function MarginConfig() {
         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
       </svg>
-      Loading…
+      {t("loadingMargin")}
     </div>
   );
 
@@ -169,12 +171,10 @@ export default function MarginConfig() {
             onClick={e => e.stopPropagation()}
           >
             <p className="text-white font-semibold text-sm mb-1">
-              {confirm.type === "add" ? "Add new range?" : "Remove this range?"}
+              {confirm.type === "add" ? t("addNewRange") : t("removeThisRange")}
             </p>
             <p className="text-[#6b7785] text-xs mb-5">
-              {confirm.type === "add"
-                ? "A new empty price range will be inserted after this row."
-                : "This price range will be permanently removed."}
+              {confirm.type === "add" ? t("addRangeDesc") : t("removeRangeDesc")}
             </p>
             <div className="flex gap-2 justify-end">
               <button
@@ -182,7 +182,7 @@ export default function MarginConfig() {
                 className="px-4 py-2 rounded-xl text-sm font-medium"
                 style={{ background: "rgba(80,160,250,0.06)", border: "1px solid rgba(80,160,250,0.18)", color: "#a0adbb" }}
               >
-                Cancel
+                {t("cancel")}
               </button>
               <button
                 onClick={handleConfirm}
@@ -193,7 +193,7 @@ export default function MarginConfig() {
                   border: "none",
                 }}
               >
-                {confirm.type === "add" ? "Yes, Add" : "Yes, Remove"}
+                {confirm.type === "add" ? t("yesAdd") : t("yesRemove")}
               </button>
             </div>
           </div>
@@ -202,10 +202,8 @@ export default function MarginConfig() {
 
       {/* Header */}
       <div className="mb-6 fade-up">
-        <h1 className="text-2xl font-medium text-white mb-1">Profit Margin Configuration</h1>
-        <p className="text-sm text-[#6b7785]">
-          Set markup per price range. Markup is applied to the Amazon price first, then $8 shipping + $5 insurance are added on top.
-        </p>
+        <h1 className="text-2xl font-medium text-white mb-1">{t("marginConfigTitle")}</h1>
+        <p className="text-sm text-[#6b7785]">{t("marginConfigSubtitle")}</p>
       </div>
 
       {/* Rules table */}
@@ -214,10 +212,10 @@ export default function MarginConfig() {
         <div className="grid grid-cols-12 gap-3 px-5 py-3 text-[10px] uppercase tracking-widest font-bold text-[#4a5568]"
           style={{ background: "rgba(80,160,250,0.04)", borderBottom: "1px solid rgba(80,160,250,0.08)" }}>
           <div className="col-span-1">#</div>
-          <div className="col-span-3">Min Price (USD)</div>
-          <div className="col-span-3">Max Price (USD)</div>
-          <div className="col-span-2">Markup %</div>
-          <div className="col-span-2">Sample result</div>
+          <div className="col-span-3">{t("minPriceUsd")}</div>
+          <div className="col-span-3">{t("maxPriceUsd")}</div>
+          <div className="col-span-2">{t("markupPct")}</div>
+          <div className="col-span-2">{t("sampleResult")}</div>
           <div className="col-span-1"></div>
         </div>
 
@@ -354,16 +352,16 @@ export default function MarginConfig() {
       <div className="rounded-xl px-4 py-3 mb-5 text-[12px] text-[#6b7785] leading-relaxed"
         style={{ background: "rgba(80,160,250,0.04)", border: "1px solid rgba(80,160,250,0.1)" }}>
         <div style={{ lineHeight: 1.8 }}>
-          <div><span className="text-white">Step 1:</span> Amazon price + markup price = <span className="text-[#50A0FA]">selling price</span></div>
-          <div><span className="text-white">Step 2:</span> Selling price + $8 shipping + $5 insurance = <span className="text-[#50A0FA]">final price (USD)</span></div>
-          <div><span className="text-white">Step 3:</span> Final price (USD) × exchange rate = <span className="text-[#50A0FA]">final price (COP)</span></div>
-          <div className="mt-1 text-[11px]">Example: $20 Amazon + 100% markup → $40 + $8 + $5 = <span className="text-white font-semibold">$53 USD</span></div>
+          <div><span className="text-white">{t("pricingStep1")}</span> {t("pricingStep1Detail")}</div>
+          <div><span className="text-white">{t("pricingStep2")}</span> {t("pricingStep2Detail")}</div>
+          <div><span className="text-white">{t("pricingStep3")}</span> {t("pricingStep3Detail")}</div>
+          <div className="mt-1 text-[11px]">{t("pricingExample")}</div>
         </div>
       </div>
 
       {/* Price preview calculator */}
       <div className="card rounded-xl p-5 mb-5">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-[#50A0FA] mb-4">Price Calculator</h3>
+        <h3 className="text-xs font-bold uppercase tracking-widest text-[#50A0FA] mb-4">{t("priceCalculator")}</h3>
         <div className="flex items-center gap-4 flex-wrap">
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6b7785] text-sm">$</span>
@@ -371,7 +369,7 @@ export default function MarginConfig() {
               type="number" min="0" step="0.01"
               value={preview}
               onChange={e => setPreview(e.target.value)}
-              placeholder="Enter Amazon price"
+              placeholder={t("enterAmazonPrice")}
               className="rounded-lg pl-7 pr-3 py-2.5 text-sm outline-none w-52"
               style={{ background: "rgba(80,160,250,0.06)", border: "1px solid rgba(80,160,250,0.2)", color: "#e8ecf2" }}
             />
@@ -381,7 +379,7 @@ export default function MarginConfig() {
             <div className="flex flex-col gap-2 mt-3 w-full">
               {/* Rule matched */}
               <div className="text-[11px] text-[#6b7785]">
-                Rule matched: <span className="text-white font-semibold">
+                {t("ruleMatchedLabel")}: <span className="text-white font-semibold">
                   ${previewCalc.rule.min_price}–${previewCalc.rule.max_price} → {previewCalc.rule.markup_pct}% markup
                 </span>
               </div>
@@ -389,29 +387,29 @@ export default function MarginConfig() {
               <div className="rounded-lg px-4 py-3 text-[12px] leading-relaxed"
                 style={{ background: "rgba(80,160,250,0.04)", border: "1px solid rgba(80,160,250,0.1)" }}>
                 <div className="grid gap-1" style={{ gridTemplateColumns: "auto 1fr" }}>
-                  <span className="text-[#6b7785] pr-4">Amazon price</span>
+                  <span className="text-[#6b7785] pr-4">{t("amazonPriceLabel")}</span>
                   <span className="text-white">${previewPrice.toFixed(2)}</span>
 
-                  <span className="text-[#6b7785] pr-4">Markup ({previewCalc.rule.markup_pct}%)</span>
+                  <span className="text-[#6b7785] pr-4">{t("markupLabel", { pct: previewCalc.rule.markup_pct })}</span>
                   <span className="text-green-400 font-semibold">+${previewCalc.profit.toFixed(2)}</span>
 
-                  <span className="text-[#6b7785] pr-4">Shipping</span>
+                  <span className="text-[#6b7785] pr-4">{t("shippingLabel")}</span>
                   <span className="text-[#a0adbb]">+${SHIPPING.toFixed(2)}</span>
 
-                  <span className="text-[#6b7785] pr-4">Insurance</span>
+                  <span className="text-[#6b7785] pr-4">{t("insuranceLabel")}</span>
                   <span className="text-[#a0adbb]">+${INSURANCE.toFixed(2)}</span>
 
                   <div className="col-span-2 my-1" style={{ borderTop: "1px solid rgba(80,160,250,0.15)" }} />
 
-                  <span className="text-white font-semibold pr-4">Final price (USD)</span>
+                  <span className="text-white font-semibold pr-4">{t("finalPriceUsdLabel")}</span>
                   <span className="font-bold" style={{ color: "#50A0FA" }}>${previewCalc.mlUsd.toFixed(2)}</span>
 
-                  <span className="text-white font-semibold pr-4">Final price (COP)</span>
+                  <span className="text-white font-semibold pr-4">{t("finalPriceCopLabel")}</span>
                   <span className="font-bold" style={{ color: "#50A0FA" }}>{previewCalc.mlCop.toLocaleString()}</span>
 
                   <div className="col-span-2 my-1" style={{ borderTop: "1px solid rgba(80,160,250,0.15)" }} />
 
-                  <span className="text-green-400 font-bold pr-4">Our profit</span>
+                  <span className="text-green-400 font-bold pr-4">{t("ourProfitLabel")}</span>
                   <span className="text-green-400 font-bold">+${previewCalc.profit.toFixed(2)}</span>
                 </div>
               </div>
@@ -441,7 +439,7 @@ export default function MarginConfig() {
                 setRepriceDone(res.updated ?? 0);
                 setTimeout(() => setRepriceDone(null), 4000);
               } catch {
-                setError("Failed to recalculate prices. Please try again.");
+                setError(t("marginRepriceFailed"));
               } finally {
                 setRepricing(false);
               }
@@ -454,11 +452,11 @@ export default function MarginConfig() {
               border: "1px solid rgba(245,158,11,0.3)",
             }}
           >
-            {repricing ? "Recalculating…" : "Apply Rules to All Products"}
+            {repricing ? t("recalculating") : t("applyRulesToAll")}
           </button>
           {repriceDone !== null && (
             <span className="text-[12px] font-semibold text-green-400">
-              ✓ {repriceDone} products updated
+              {t("nProductsUpdated", { n: repriceDone })}
             </span>
           )}
         </div>
@@ -471,7 +469,7 @@ export default function MarginConfig() {
             border:      saved ? "1px solid rgba(34,197,94,0.4)" : "none",
             boxShadow:   saving || saved ? "none" : "0 0 18px rgba(80,160,250,0.45)",
           }}>
-          {saved ? "Saved!" : saving ? "Saving…" : "Save Rules"}
+          {saved ? t("saved") : saving ? t("savingLabel") : t("saveRules")}
         </button>
       </div>
     </div>
