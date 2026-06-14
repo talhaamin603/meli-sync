@@ -1,0 +1,5 @@
+asin,title,description,image_url,amazon_price_usd,stock,is_prime
+B0TEST001,Moisturizing Face Cream 50ml,Deep hydration for all skin types,https://example.com/cream.jpg,19.99,50,true
+B0TEST002,Organic Shampoo Coconut 500ml,Gentle cleansing with natural ingredients,https://example.com/shampoo.jpg,24.99,30,true
+B0TEST003,Adidas Face Wash,Adidas brand face cleanser - SHOULD BE BLOCKED,https://example.com/adidas.jpg,15.99,20,true
+B0TEST004,Non-Prime Face Serum,This product is not Prime eligible,https://example.com/serum.jpg,29.99,10,false
