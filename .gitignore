@@ -6,3 +6,10 @@ __pycache__/
 .vscode/
 .idea/
 .DS_Store
+
+# Vite cache
+frontend/.vite/
+
+# Claude Code
+.claude/
+CLAUDE.md
