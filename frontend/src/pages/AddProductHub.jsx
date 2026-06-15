@@ -5,7 +5,7 @@ function OptionCard({ icon, title, description, badge, onClick, className = "" }
   return (
     <button
       onClick={onClick}
-      className={`group relative w-full text-left rounded-2xl p-7 transition-all duration-300 hover:-translate-y-1 ${className}`}
+      className={`group relative w-full text-left rounded-2xl p-7 transition-all duration-200 ${className}`}
       style={{
         background: "linear-gradient(135deg, rgba(80,160,250,0.05) 0%, rgba(13,17,23,0.8) 100%)",
         border: "1px solid rgba(80,160,250,0.12)",
@@ -19,14 +19,10 @@ function OptionCard({ icon, title, description, badge, onClick, className = "" }
         e.currentTarget.style.boxShadow = "none";
       }}
     >
-      {/* Top accent line */}
-      <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-        style={{ background: "linear-gradient(90deg, transparent, #50A0FA, transparent)" }} />
-
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-5">
           {/* Icon */}
-          <div className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform duration-300 group-hover:scale-110"
+          <div className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform duration-200 group-hover:scale-105"
             style={{ background: "rgba(80,160,250,0.1)", border: "1px solid rgba(80,160,250,0.2)" }}>
             {icon}
           </div>
@@ -36,8 +32,8 @@ function OptionCard({ icon, title, description, badge, onClick, className = "" }
             <div className="flex items-center gap-2 mb-1.5">
               <h3 className="text-lg font-bold text-white">{title}</h3>
               {badge && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                  style={{ background: "rgba(80,160,250,0.15)", color: "#50A0FA", border: "1px solid rgba(80,160,250,0.25)" }}>
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md"
+                  style={{ background: "rgba(77,158,248,0.12)", color: "#4D9EF8", border: "1px solid rgba(77,158,248,0.22)" }}>
                   {badge}
                 </span>
               )}
@@ -138,8 +134,6 @@ export default function AddProductHub() {
         />
       </div>
 
-      {/* Footer hint */}
-      <p className="text-[11px] text-[#4a5568] mt-6">{t("moreOptionsSoon")}</p>
     </div>
   );
 }
